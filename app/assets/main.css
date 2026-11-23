@@ -17,8 +17,9 @@
     --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
     --header-h: 3.5rem;
 }
+/* dark theme: follows the system unless the user picked a theme (data-theme on <html>) */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
         --bg: #171614;
         --surface: #201f1c;
         --text: #ece8e1;
@@ -32,6 +33,32 @@
         --hl: #5c4c12;
         --hl-strong: #7a6414;
         --red: #f08a80;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #171614;
+    --surface: #201f1c;
+    --text: #ece8e1;
+    --muted: #a39d93;
+    --border: #3a3732;
+    --accent: #e0a37c;
+    --person: #7fb2f0;
+    --place: #79c99a;
+    --org: #c4a3ee;
+    --action-bg: #2d2b27;
+    --hl: #5c4c12;
+    --hl-strong: #7a6414;
+    --red: #f08a80;
+}
+:root {
+    color-scheme: light;
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
     }
 }
 
@@ -97,6 +124,11 @@ h2 {
     color: var(--text);
     text-decoration: none;
     font-weight: 600;
+}
+.site-header .header-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
 }
 .site-header nav {
     display: flex;

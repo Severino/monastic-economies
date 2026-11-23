@@ -4,7 +4,19 @@ export default defineNuxtConfig({
     devtools: { enabled: false },
     css: ["~/assets/main.css"],
     app: {
-        head: { title: "Monastic Economies", htmlAttrs: { lang: "en" } },
+        head: {
+            title: "Monastic Economies",
+            htmlAttrs: { lang: "en" },
+            script: [
+                {
+                    // apply a stored light/dark choice before the first paint (no flash)
+                    innerHTML:
+                        "try{var t=localStorage.getItem('monastic-economies:theme');" +
+                        "if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}",
+                    tagPosition: "head",
+                },
+            ],
+        },
     },
     runtimeConfig: {
         public: {

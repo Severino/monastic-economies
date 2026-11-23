@@ -70,7 +70,10 @@ UI language: **English**.
   (coloured when on, grey when off). The glossary slides in over the facsimile.
 - The facsimile pane shows one page, filling the pane; a pager with page tiles at the bottom
   (arrow keys when focused) switches pages and follows the transcript scroll.
-- Colours are CSS custom properties on `:root` with a dark-mode variant; reuse them.
+- Colours are CSS custom properties on `:root`; reuse them. Dark theme: follows the system by default; the
+  theme toggle (right side of the nav bar) sets `data-theme` on `<html>` and stores it in `localStorage`
+  (`monastic-economies:theme`). An inline script in `nuxt.config.ts` applies the stored choice before the first
+  paint. Define new colour tokens for both themes (system-dark media query and `[data-theme="dark"]`).
 
 ## Code style
 

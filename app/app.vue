@@ -6,6 +6,9 @@
                 <NuxtLink to="/charters">Charters</NuxtLink>
                 <NuxtLink to="/persons">Persons</NuxtLink>
             </nav>
+            <div class="header-actions">
+                <ThemeToggle />
+            </div>
         </header>
         <main>
             <NuxtPage />
