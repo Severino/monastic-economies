@@ -8,7 +8,7 @@
  * e.g. --data fixtures for the committed sample data.
  *
  * IDs are global across charters, so all index files are merged into one set.
- * Data problems are collected in public/data/build-report.json; the build only
+ * Data problems are collected in ./build-report.json (not deployed); the build only
  * fails on XML that cannot be parsed.
  */
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs'
@@ -248,7 +248,9 @@ write('relations.json', { explicit: idx.relations, cooccurrence: [...cooc.values
 write('books.json', [...books.values()])
 write('places.geojson', geojson)
 write('search-index.json', search.toJSON())
-writeFileSync(join(OUT, 'build-report.json'), JSON.stringify(issues, null, 2))
+// kept outside public/ so it is not deployed with the site
+const REPORT = join(ROOT, 'build-report.json')
+writeFileSync(REPORT, JSON.stringify(issues, null, 2))
 
 const errors = issues.filter((i) => i.level === 'error')
 const warnings = issues.filter((i) => i.level === 'warning')
@@ -256,7 +258,7 @@ console.log(
   `index files: ${[...indexFiles].map(rel).join(', ') || 'none'}\n` +
     `charters: ${charters.length}, persons: ${idx.persons.size}, places: ${idx.places.size}, orgs: ${idx.orgs.size}, ` +
     `relations: ${idx.relations.length}\n` +
-    `issues: ${errors.length} error(s), ${warnings.length} warning(s) -> public/data/build-report.json`,
+    `issues: ${errors.length} error(s), ${warnings.length} warning(s) -> ${REPORT}`,
 )
 for (const i of errors) console.log(`  [error] ${i.file}: ${i.message}`)
 // warnings grouped by kind (quoted values replaced), with up to 3 examples each

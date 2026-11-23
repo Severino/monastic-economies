@@ -60,9 +60,9 @@ Schema files are in `schema/`.
 | `books.json` | books (derived from `msDesc/msIdentifier/idno`) |
 | `places.geojson` | places with coordinates |
 | `search-index.json` | serialized MiniSearch index |
-| `build-report.json` | data problems (missing `#`, broken references, …) |
 
-The build reports data problems but only fails on XML that cannot be parsed.
+The build reports data problems in `./build-report.json` (git-ignored, not deployed;
+the full path is printed at the end of the build) and only fails on XML that cannot be parsed.
 See `docs/datenmodell.md` for the data model.
 
 `npm run data:placeholder-index -- --data fixtures` regenerates `fixtures/indices/placeholder-indices.xml`

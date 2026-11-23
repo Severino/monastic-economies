@@ -8,3 +8,4 @@ public/data
 
 # working data (real XML); the committed sample data lives in /fixtures
 /data/
+build-report.json
