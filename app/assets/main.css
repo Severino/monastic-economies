@@ -695,15 +695,159 @@ a.tei-entity:hover {
 }
 
 /* ---- catalog --------------------------------------------------------------- */
-.filters {
+/* ---- catalog filters ---------------------------------------------------------- */
+.page-head {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
     align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.btn.disabled {
+    color: var(--muted);
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: default;
+}
+.filters {
+    display: grid;
+    gap: 0.5rem;
     margin-bottom: 0.5rem;
 }
-.filters input[type="search"] {
-    flex: 1 1 16rem;
+.search-field {
+    position: relative;
+    display: block;
+}
+.search-field .search-icon {
+    position: absolute;
+    left: 0.65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+}
+.search-field input[type="search"] {
+    width: 100%;
+    padding-left: 2.2rem;
+}
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+@media (max-width: 600px) {
+    .filter-row {
+        grid-template-columns: 1fr;
+    }
+}
+.filter-select {
+    position: relative;
+    min-width: 0;
+}
+.fs-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--muted);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.filter-select.set .fs-button {
+    border-color: var(--accent);
+    color: var(--text);
+}
+.fs-button:hover,
+.filter-select.open .fs-button {
+    border-color: var(--accent);
+}
+.fs-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fs-chevron {
+    flex: none;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+}
+.filter-select.open .fs-chevron {
+    transform: rotate(180deg);
+}
+.fs-popover {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    min-width: 14rem;
+    padding: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+}
+.fs-input {
+    width: 100%;
+}
+.fs-list {
+    max-height: 16rem;
+    overflow-y: auto;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+.fs-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.fs-list li.active {
+    background: var(--action-bg);
+}
+.fs-list li.all {
+    color: var(--muted);
+}
+.fs-list mark {
+    background: var(--hl);
+    color: inherit;
+    border-radius: 2px;
+}
+.fs-check {
+    flex: none;
+    width: 14px;
+    color: var(--accent);
+}
+.fs-list .fs-empty {
+    color: var(--muted);
+    cursor: default;
 }
 input[type="search"],
 select {

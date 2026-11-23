@@ -62,6 +62,9 @@ UI language: **English**.
   people expect. Highlighting uses the same rule, so what is marked is what matched.
 - Results show title and issuer on one line (no "Issuer:" label), a text snippet around the first match
   with `<mark>` and the number of matches. Action types in lists are subdued (muted colour with alpha).
+- Catalog layout: "Reset filters" button right of the page title (greyed out when nothing is set); the search field
+  (magnifier icon) fills the first row; person, place and action filters share the second row evenly. Filters are
+  `FilterSelect` dropdowns with their own text filter (same matching rule as the search) and keyboard support.
 - The persons list is grouped by first letter (diacritics folded), with a letter jump bar; a Lucide icon before
   each name shows `@sex` (Mars, Venus, faint dashed circle when unknown).
 

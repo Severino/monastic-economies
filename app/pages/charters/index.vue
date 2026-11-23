@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RotateCcw, Search } from "lucide-vue-next"
 import { queryTerms, searchDocs, snippet, type SearchDoc } from "#shared/search"
 
 useHead({ title: "Charters · Monastic Economies" })
@@ -58,12 +59,14 @@ const options = computed(() => {
     const uniq = (xs: string[]) => [...new Set(xs)]
     return {
         persons: uniq(c.flatMap((e) => e.persons))
-            .map((id) => ({ id, name: persons.value?.[id]?.name ?? id }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
+            .map((id) => ({ value: id, label: persons.value?.[id]?.name ?? id }))
+            .sort((a, b) => a.label.localeCompare(b.label)),
         places: uniq(c.flatMap((e) => e.places))
-            .map((id) => ({ id, name: placeName(places.value?.[id]) }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        actions: uniq(c.flatMap((e) => e.actionTypes)).sort(),
+            .map((id) => ({ value: id, label: placeName(places.value?.[id]) }))
+            .sort((a, b) => a.label.localeCompare(b.label)),
+        actions: uniq(c.flatMap((e) => e.actionTypes))
+            .sort()
+            .map((a) => ({ value: a, label: label(a) })),
     }
 })
 // highlighting: same matching rule as the search
@@ -78,39 +81,51 @@ const active = computed(() => ["q", "person", "place", "action"].some((k) => q(k
 
 <template>
     <div class="container">
-        <h1>Charters</h1>
+        <div class="page-head">
+            <h1>Charters</h1>
+            <NuxtLink
+                to="/charters"
+                class="btn reset"
+                :class="{ disabled: !active }"
+                :aria-disabled="!active"
+                :tabindex="active ? undefined : -1"
+            >
+                <RotateCcw :size="15" />Reset filters
+            </NuxtLink>
+        </div>
         <form class="filters" role="search" @submit.prevent>
-            <input
-                v-model="text"
-                type="search"
-                placeholder="Search text, persons, places…"
-                aria-label="Full-text search"
-            />
-            <select
-                :value="q('person')"
-                aria-label="Person"
-                @change="setQuery('person', ($event.target as HTMLSelectElement).value)"
-            >
-                <option value="">All persons</option>
-                <option v-for="p in options.persons" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
-            <select
-                :value="q('place')"
-                aria-label="Place"
-                @change="setQuery('place', ($event.target as HTMLSelectElement).value)"
-            >
-                <option value="">All places</option>
-                <option v-for="p in options.places" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
-            <select
-                :value="q('action')"
-                aria-label="Action"
-                @change="setQuery('action', ($event.target as HTMLSelectElement).value)"
-            >
-                <option value="">All actions</option>
-                <option v-for="a in options.actions" :key="a" :value="a">{{ label(a) }}</option>
-            </select>
-            <NuxtLink v-if="active" to="/charters" class="reset">Reset</NuxtLink>
+            <label class="search-field">
+                <Search :size="18" class="search-icon" />
+                <input
+                    v-model="text"
+                    type="search"
+                    placeholder="Search text, persons, places…"
+                    aria-label="Full-text search"
+                />
+            </label>
+            <div class="filter-row">
+                <FilterSelect
+                    :model-value="q('person')"
+                    :options="options.persons"
+                    all-label="All persons"
+                    aria-label="Person"
+                    @update:model-value="setQuery('person', $event)"
+                />
+                <FilterSelect
+                    :model-value="q('place')"
+                    :options="options.places"
+                    all-label="All places"
+                    aria-label="Place"
+                    @update:model-value="setQuery('place', $event)"
+                />
+                <FilterSelect
+                    :model-value="q('action')"
+                    :options="options.actions"
+                    all-label="All actions"
+                    aria-label="Action"
+                    @update:model-value="setQuery('action', $event)"
+                />
+            </div>
         </form>
         <p class="muted">{{ results.length }} of {{ catalog?.length ?? 0 }} charters</p>
         <CharterList :entries="results" :highlight="highlight" :snippets="snippets" />
