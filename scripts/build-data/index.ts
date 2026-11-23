@@ -12,12 +12,12 @@
  * fails on XML that cannot be parsed.
  */
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs'
-import { basename, join, relative } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import MiniSearch from 'minisearch'
 import type { Book, BuildIssue, CatalogEntry, Charter, CharterLink, EntityKind } from '../../shared/types'
 import { parseCharter } from './charter'
 import { emptyIndices, readIndices } from './indices'
-import { parseXml, type El } from './tei'
+import { attr, descendants, parseXml, type El } from './tei'
 import { SEARCH_OPTIONS } from '../../shared/search'
 import { ROOT, dataDir } from '../data-dir'
 
@@ -71,15 +71,42 @@ function readXml(file: string): string {
 }
 
 const rel = (f: string) => relative(ROOT, f)
+const xmlBase = (el: El) =>
+  el.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'base') ?? el.getAttribute('xml:base') ?? undefined
 const xmlFiles = (dir: string) =>
   existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.xml')).sort().map((f) => join(dir, f)) : []
 
 // ---- 1. indices ---------------------------------------------------------------
+// Index files are read from <data>/indices and from every file a charter links
+// to (xi:include/@href, text/@xml:base), e.g. ../fulda-indices.xml.
 const idx = emptyIndices()
-for (const f of xmlFiles(INDEX_DIR)) {
+const indexFiles = new Set<string>()
+const missingIndexFiles = new Map<string, Set<string>>()
+
+function loadIndexFile(f: string) {
+  const key = resolve(f)
+  if (indexFiles.has(key)) return
+  indexFiles.add(key)
   const root = load(f)
   if (root) readIndices(root, idx, (m) => issues.push({ level: 'warning', file: rel(f), message: m }))
 }
+
+function loadLinkedIndices(tei: El, charterFile: string) {
+  const hrefs = [
+    ...descendants(tei, 'include').map((el) => attr(el, 'href')),
+    ...descendants(tei, 'text').map((el) => xmlBase(el)),
+  ].filter((h): h is string => !!h && /\.xml$/i.test(h) && !/^[a-z]+:/i.test(h))
+  for (const href of new Set(hrefs)) {
+    const f = resolve(dirname(charterFile), href)
+    if (existsSync(f)) loadIndexFile(f)
+    else {
+      if (!missingIndexFiles.has(f)) missingIndexFiles.set(f, new Set())
+      missingIndexFiles.get(f)!.add(rel(charterFile))
+    }
+  }
+}
+
+for (const f of xmlFiles(INDEX_DIR)) loadIndexFile(f)
 
 // ---- 2. charters --------------------------------------------------------------
 const charters: Charter[] = []
@@ -91,6 +118,7 @@ for (const collection of collections) {
   for (const f of xmlFiles(join(XML_DIR, collection))) {
     const tei = load(f)
     if (!tei) continue
+    loadLinkedIndices(tei, f)
     // charters may also carry their own standOff index blocks
     readIndices(tei, idx, (m) => issues.push({ level: 'warning', file: rel(f), message: m }))
     const id = `${collection}-${basename(f, '.xml')}`
@@ -105,6 +133,21 @@ for (const collection of collections) {
   }
 }
 charters.sort((a, b) => a.id.localeCompare(b.id))
+
+for (const [f, from] of missingIndexFiles)
+  issues.push({
+    level: 'warning',
+    file: rel(f),
+    message: `index file linked from ${from.size} charter(s) (e.g. ${[...from][0]}) does not exist`,
+  })
+if (!indexFiles.size)
+  issues.push({
+    level: 'error',
+    file: '-',
+    message: `no index file found: put it into ${rel(INDEX_DIR)}/ or where the charters link to it (xi:include / xml:base)`,
+  })
+else if (!idx.persons.size)
+  issues.push({ level: 'error', file: '-', message: `index files contain no <person> elements: ${[...indexFiles].map(rel).join(', ')}` })
 
 // ---- 3. resolve mentions, back references -------------------------------------
 const kindOf = (ref: string): EntityKind =>
@@ -207,13 +250,26 @@ write('places.geojson', geojson)
 write('search-index.json', search.toJSON())
 writeFileSync(join(OUT, 'build-report.json'), JSON.stringify(issues, null, 2))
 
-const errors = issues.filter((i) => i.level === 'error').length
+const errors = issues.filter((i) => i.level === 'error')
+const warnings = issues.filter((i) => i.level === 'warning')
 console.log(
-  `charters: ${charters.length}, persons: ${idx.persons.size}, places: ${idx.places.size}, orgs: ${idx.orgs.size}, ` +
+  `index files: ${[...indexFiles].map(rel).join(', ') || 'none'}\n` +
+    `charters: ${charters.length}, persons: ${idx.persons.size}, places: ${idx.places.size}, orgs: ${idx.orgs.size}, ` +
     `relations: ${idx.relations.length}\n` +
-    `issues: ${errors} error(s), ${issues.length - errors} warning(s) -> public/data/build-report.json`,
+    `issues: ${errors.length} error(s), ${warnings.length} warning(s) -> public/data/build-report.json`,
 )
-for (const i of issues) console.log(`  [${i.level}] ${i.file}: ${i.message}`)
+for (const i of errors) console.log(`  [error] ${i.file}: ${i.message}`)
+// warnings grouped by kind (quoted values replaced), with up to 3 examples each
+const groups = new Map<string, BuildIssue[]>()
+for (const w of warnings) {
+  const k = w.message.replace(/"[^"]*"/g, '"…"').replace(/\(.*\)$/, '')
+  if (!groups.has(k)) groups.set(k, [])
+  groups.get(k)!.push(w)
+}
+for (const [k, ws] of groups) {
+  console.log(`  [warning] ${ws.length}× ${k}`)
+  for (const w of ws.slice(0, 3)) console.log(`      ${w.file}: ${w.message}`)
+}
 if (fatal) {
   console.error(`\nBuild failed: ${fatal} file(s) could not be read or parsed (see "XML parse error" / "file is empty" above).`)
   process.exit(1)

@@ -37,6 +37,11 @@ Two data folders with the same layout:
 <folder>/indices/*.xml            index files (persons, places, orgs, relations); IDs are global
 ```
 
+Index files are also picked up automatically where the charters link to them
+(`xi:include/@href`, `text/@xml:base`, e.g. `../fulda-indices.xml` from
+`xml/fulda/001.xml` resolves to `xml/fulda-indices.xml`). The build prints which
+index files it used.
+
 The build scripts use `./data` by default; `--data <dir>` picks another folder
 (`npm run data -- --data fixtures`, or `npm run data:sample`). When the data
 shows a structure the fixtures don't cover yet, add a pseudonymized example to
