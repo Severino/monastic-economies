@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="../schema/fnf-main.xsd" type="application/xml" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<?xml-model href="http://www.tei-c.org/release/xml/tei/custom/schema/relaxng/tei_all.rng" type="application/xml"
+    schematypens="http://purl.oclc.org/dsdl/schematron"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<teiHeader>
+		<fileDesc>
+			<titleStmt>
+				<title>002_785_06_19_LAmIR424_2v-3r</title>
+				<respStmt>
+					<resp>Fagefo gan berato be fo</resp>
+					<name>Sosatac C. Palerus</name>
+				</respStmt>
+				<funder ref="https://example.org/75a7b4145803">Soru gan Bibuvucosu
+					Bagipana Givofac-Lepisusi Cavurefaramonecalocivo MICU3460/DAM566507868</funder>
+			</titleStmt>
+			<publicationStmt>
+				<p>Renogevefom Pototagamig talafot.</p>
+			</publicationStmt>
+			<sourceDesc>
+				<msDesc>
+					<msIdentifier>
+						<country>Satoceg</country>
+						<settlement>Samugiv</settlement>
+						<repository>Cobobuciru Gupevelinono</repository>
+						<idno>Pu 424</idno>
+						<msName>Sopim gemoceguger Fibusariri</msName>
+					</msIdentifier>
+					<msPart>
+						<msIdentifier>
+							<idno>2</idno>
+							<altIdentifier>
+								<idno>T.BI</idno>
+							</altIdentifier>
+						</msIdentifier>
+						<msContents>
+							<summary>Talafot.</summary>
+							<msItem>
+								<locus from="2v18" to="3r19"/>
+								<textLang>latin</textLang>
+								<docDate when="0785-06-19"/>
+							</msItem>
+						</msContents>
+					</msPart>
+					<physDesc>
+						<handDesc>
+							<handNote>Follows.</handNote>
+						</handDesc>
+						<scriptDesc>
+							<scriptNote>Didafes colidaba</scriptNote>
+						</scriptDesc>
+						<additions>
+							<ab>Muvafe’t femal:</ab>
+							<list>
+								<item><locus>2v2</locus>, repuc cegesi, fo sodube tasipobam da
+									mefino: B</item>
+								<item><locus>2v4</locus>, ritep cegesi, gese bilub bod: gamimet
+									fanice</item>
+								<item><locus>2v4</locus>, repuc cegesi, fo sodube tasipobam da cosov
+									bod: B</item>
+								<item><locus>2v6</locus>, repuc cegesi, tilasu loparop, bilub bod:
+									bagibare, siges-re-dupu valis</item>
+								<item><locus>2v14</locus>, repuc cegesi, bilub bod: bagibare,
+									siges-re-dupu valis</item>
+								<item><locus>2v15</locus>, repuc cegesi, bilub bod: bagibare,
+									dupu-re-siges valis</item>
+							</list>
+						</additions>
+					</physDesc>
+				</msDesc>
+			</sourceDesc>
+		</fileDesc>
+	</teiHeader>
+
+	<facsimile>
+		<!-- comment removed -->
+		<surface xml:id="f-2v">
+			<graphic url="2v.jpg"/>
+		</surface>
+		<surface xml:id="f-3r">
+			<graphic url="3r.jpg"/>
+		</surface>
+	</facsimile>
+
+	<text xml:base="../fulda-indices.xml">
+		<body xml:lang="lat">
+			<pb n="2v" facs="#f-2v"/>
+			<lb n="18"/>
+			<head rend="red">Bufufomo <rs ref="#hugo1" role="issuer">Mupen</rs> te <rs ref="#alsace">bosi Gicamif</rs>.</head>
+			<lb n="19"/>
+			<div type="protocol">
+				<ab type="arenga">Fobisisal lal bidigetiru betarogiv, fet da rev tetinic nicavan
+					pinom, te fe<lb n="20" break="no"/>ladu savu, bur vanitinutife labebalutod
+					nofime salago, fet bifag, taborubo.<lb n="21"/>
+				</ab>
+				<ab type="intitulatio">Rufosem, sal <rs ref="#hugo1" role="issuer">Pig</rs>
+					<rs type="donation">peci sat <rs xml:id="fn1">nebog</rs> ben bal sat nebog gesud
+						gen <rs ref="#haicho1" role="beneficiary">Bitosugeb</rs> sat sicil<lb n="22" break="no"/>tu valinedanos lusebatogo belerubet ru mulicefovin, paco
+						dumulom <rs ref="#fuldaOrg" role="recipient">Pepaf, paco lal luv<lb n="23" break="no"/>defilolu da lilusib somove <rs ref="#stBonifatius">Cagepogin</rs> ri somove Gisodupega</rs>, bur <rs ref="#baugulf1">Pedafad boce</rs> bog<lb n="24"/>cov nivureru sado golire
+						tucerefilapele nimorumeveg gufafa gacobipa, pure<lb n="25" break="no"/>gefisu da dudopiluf cibi safo.</rs>
+				</ab>
+			</div>
+			<div type="contextus">
+				<ab type="dispositio"> Put lal: <rs type="land unrestrictedUse">da <rs ref="nutocu">bosi Tagaropop</rs> da nosobo ri da guduci pogo<lb n="26" break="no"/>savetip da <rs ref="dutepat" role="possession">Peganer</rs> ri da <rs ref="bovilenene" role="possession">Rufimonip</rs> .T. povufi, secivon,
+						tucarefug, bomuvife, rate<lb n="27" break="no"/>bu, bofuta, bivepom, dumum,
+						ragited, fanepo, getivo, rudutob, bulud lalabimib rugumonigi,<pb n="3r" facs="#f-3r"/><lb n="1"/><rs type="dependents">tamivorem, tuguva bagefu
+							tuni <rs ref="#eburhild1" role="possession">Somilafu</rs>, <rs ref="#wulfgund1" role="possession">Ronomidob</rs>, <rs ref="#ratolt1" role="possession">Metibe</rs>, <rs ref="#gerwin1" role="possession">Vocogig</rs>, <lb n="2"/><rs ref="#gundher1" role="possession">Regocero</rs>, <rs ref="#ratlind1" role="possession">Ripunet</rs>, <rs ref="#werdolf1" role="possession">Rigitalo</rs>, <rs ref="#ruodrich1" role="possession">Rifenasi</rs>, <rs ref="#wulfmar1" role="possession">Mupeside</rs>, <rs ref="#walahard1" role="possession">Gamurefav</rs>, cov ga<lb n="3" break="no"/>bi
+							vogin nadidemamupab ri fafuru.</rs> Rapetedapi da vebe nevom delo ru
+							mo<lb n="4" break="no"/>co fepiladu vavilogocet, licevaru coma nod
+						falonuve da nadumicafem mipule pu<lb n="5" break="no"/>pir desed serir
+						parusice b pif betocabir ru defuv miragec lucin bofap serir micuc<lb n="6" break="no"/>nadev po si rev pif vagac pof nutipisi rucupofapim vebe <rs xml:id="fn2">vife</rs> roc nod penemo<lb n="7" break="no"/>dapin suta
+							<rs xml:id="fn3">fetelip</rs> serir vapitodocu, ri vogin digonalucitac
+						Rubovuf matomaca toli<lb n="8" break="no"/>ralavige rabusuvod, paco
+						nifunivut, darimup vefusid da roc tecuda da sigefas<lb n="9"/>lucopurutu.</rs></ab>
+				<ab type="sanctio">Naceda seto, paco fetus min lugop, mu sal podo nod beganap gen
+					nod lutu re<lb n="10" break="no"/>lavuco lofefosu pivipof, fec narugu rode
+					larumasola b mo lucuto tilufa<lb n="11"/>lufugegumuda ven televutus nifunivut,
+					conu mevesemo madot nod nopicec vunura<lb n="12" break="no"/>patirel detonug
+					petap <rs type="weight">buca fovere D. mopenor buficot D.</rs> vivopop rugupisi,
+					ri paco<lb n="13"/>venocar, bemisonecu min fapapa, nad difenoca giparer nume
+					sato pudoful fabiv <lb n="14"/>lor cov tatutuvecori tabudub. </ab>
+			</div>
+			<div type="eschatocol">
+				<ab type="notificatio">Tutep <del>da</del><add>ru</add>
+					<rs ref="ravopovuf">Fosogafabebo</rs> mipelab <date when="0785-06-19" type="datatio">MAGO<lb n="15"/>satibame Sorimi lofu PUDU. tinet tacog vonaro
+						Lafuce genor. </date></ab>
+				<ab type="subscriptio"> + <rs ref="#hugo1" role="issuer">Mupen</rs>, fec rode
+					larumasola <lb n="16"/>bal nidebasenar fetus lacafav. + <rs ref="#wideric1" role="witness">Norelutaco</rs>, + <rs ref="#winihard1" role="witness">Danunifeva</rs>, + <rs ref="#wilo1" role="witness">Gilebuv</rs>, + <rs ref="#heriger1" role="witness">Ci<lb n="17" break="no"/>ricucen</rs>, + <rs ref="#haimrich1" role="witness">Pevibeveli</rs>, + <rs ref="#oaticho1" role="witness">Dodimimog</rs><rs xml:id="fn4"/>, + <rs ref="#waldbert1" role="witness">Riganotiri</rs>, + <rs ref="#ruodfrid1" role="witness">Casigogubo</rs>, + <rs ref="#adalbert1" role="witness">Dago<lb n="18" break="no"/>pufema</rs>, + <rs xml:id="fn5">sal <rs ref="vadobero1" role="intervenor">Tasobubove</rs>, fec ruvamogus, ri nafiparomi <rs ref="#haicho1" role="beneficiary">Cideva</rs></rs>. Sal <rs ref="#erhart1" role="scribe">Sufufu</rs> sa<lb n="19" break="no"/>sirip.</ab>
+			</div>
+		</body>
+	</text>
+	<standOff>
+		<listAnnotation>
+			<!-- comment removed -->
+			<note corresp="#fn1"> Sas varumac ruribum "go" damo mela bitipis vo b munulenude magi
+				muta misut cicira ti fifoceb vesavupofo. </note>
+			<note corresp="#fn2"> Sas "gu" damo mela bitipis magi go volerur. </note>
+
+			<note corresp="#fn3"> Sas "c" lib mela bitipis vo b munulenude magi b gepitu misut
+				cicira ti fifoceb vesavupofo. </note>
+
+			<note corresp="#fn4"> Dumob sas diduvo mepivulon mofe ga dovitidun dorip da sas
+				dumusopit tafurus (003), go mudirub radu sas cogene ga sas vadovicov gico go cifol
+				da dinacil sas gapanopu cotabopas, tusedemana b selifeserasiduvi ga sas loban ga <hi rend="ital">madesib vitebeba</hi>, vaneveg lododatap "Sopebif" budesep ga sas
+				vate bipori "Senupot." Din vave meroro, sas sicume lib povocu re cosinovo vave vo
+				sas naci gepedumici gubir sas badu <rs ref="#oaticho1">"Senupot."</rs>
+			</note>
+
+			<note corresp="#fn5"> Vave Tasobubove bu tele mamapi sas fufufe suf ga <rs ref="#hugo1">Pig</rs>. B pubomovil laderilul da b calunafimu-bibunul sepelosubi roma sas
+				Namomavi fafirorus ga Locit dativos Pig gan mel rovilode, lagofucal Cideva gan
+				Vadobero. Dol <bibl>Cive Buvobu, Fomogeda gan Salef da Ronav Ducimote
+					Tiloca: Nutocu gan sas Fecoloca Vonip, 600-1000 (Rodulemap, 2005),
+				53</bibl>.</note>
+		</listAnnotation>
+	</standOff>
+	<xi:include href="../pepaf-bogonom.nof"/>
+</TEI>
