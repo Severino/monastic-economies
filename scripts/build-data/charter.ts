@@ -109,6 +109,27 @@ export function parseCharter(tei: El, ctx: CharterContext): Charter {
         locus: { from: attr(locus, "from"), to: attr(locus, "to") },
         language: text(child(msItem, "textLang")) || (bodyEl ? xmlLang(bodyEl) : undefined),
         summary: tree(path(msPart, "msContents", "summary"), ctx),
+        manuscript: {
+            country: text(child(msIdent, "country")) || undefined,
+            settlement: text(child(msIdent, "settlement")) || undefined,
+            repository: text(child(msIdent, "repository")) || undefined,
+            idno: text(child(msIdent, "idno")) || undefined,
+            name: text(child(msIdent, "msName")) || undefined,
+        },
+        edition: {
+            publication: tree(path(fileDesc, "publicationStmt"), ctx),
+            resp: children(path(fileDesc, "titleStmt"), "respStmt").map((r) => ({
+                resp: text(child(r, "resp")) || undefined,
+                name: text(child(r, "name")) || undefined,
+                key: attr(child(r, "name"), "key"),
+            })),
+            funder: child(path(fileDesc, "titleStmt"), "funder")
+                ? {
+                      name: text(child(path(fileDesc, "titleStmt"), "funder")),
+                      ref: attr(child(path(fileDesc, "titleStmt"), "funder"), "ref"),
+                  }
+                : undefined,
+        },
         physDesc: {
             hand: text(path(physDesc, "handDesc", "handNote")) || undefined,
             script: tree(path(physDesc, "scriptDesc", "scriptNote"), ctx),

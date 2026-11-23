@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { BookOpen, BookText, CalendarDays, Languages, Library, WrapText, X } from "lucide-vue-next"
+
 // Self-contained view (loads its own data by id) so it can later be rendered
 // as a route *or* as a layer of the page stack.
 const props = defineProps<{ id: string }>()
@@ -187,6 +189,15 @@ watch(
 // ---- glossary panel (persons, places, organisations of this charter) ------------
 const glossaryOpen = ref(false)
 
+// ---- manuscript ------------------------------------------------------------------
+const manuscriptLine = computed(() => {
+    const m = charter.value?.manuscript
+    if (!m) return ""
+    const where = [m.repository, m.settlement, m.country].filter(Boolean).join(", ")
+    return [where, [m.idno, m.name && `(${m.name})`].filter(Boolean).join(" ")].filter(Boolean).join(" · ")
+})
+const manuscriptTitle = computed(() => `Manuscript: ${manuscriptLine.value}`)
+
 // ---- entity lists ---------------------------------------------------------------
 const entities = computed(() => {
     const c = charter.value
@@ -218,14 +229,7 @@ const entities = computed(() => {
                             aria-label="Close glossary"
                             @click="glossaryOpen = false"
                         >
-                            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                                <path
-                                    d="M4 4l8 8M12 4l-8 8"
-                                    stroke="currentColor"
-                                    stroke-width="1.6"
-                                    stroke-linecap="round"
-                                />
-                            </svg>
+                            <X :size="18" aria-hidden="true" />
                         </button>
                     </div>
                     <div v-if="entities.persons.length">
@@ -262,17 +266,30 @@ const entities = computed(() => {
         <section ref="transcript" class="pane transcript">
             <header ref="head" class="charter-head">
                 <div class="head-row">
-                    <p class="eyebrow">{{ charter.collection }} · {{ charter.bookId }} · no. {{ charter.number }}</p>
-                    <div class="meta-pills">
-                        <span class="pill" title="Date">
+                    <p class="eyebrow">
+                        {{ charter.collection }} · no. {{ charter.number
+                        }}<template v-if="charter.altNumber"> ({{ charter.altNumber }})</template>
+                    </p>
+                    <ul class="meta-items">
+                        <li v-if="charter.manuscript.idno" :title="manuscriptTitle">
+                            <Library :size="15" aria-hidden="true" />
+                            <span class="sr-only">Manuscript</span>{{ charter.manuscript.idno }}
+                        </li>
+                        <li title="Date">
+                            <CalendarDays :size="15" aria-hidden="true" />
+                            <span class="sr-only">Date</span>
                             <time :datetime="charter.date.when">{{ formatDate(charter.date) || "undated" }}</time>
-                        </span>
-                        <span v-if="charter.locus.from" class="pill" title="Folios">
-                            fol. {{ charter.locus.from
+                        </li>
+                        <li v-if="charter.locus.from" title="Folios">
+                            <BookOpen :size="15" aria-hidden="true" />
+                            <span class="sr-only">Folios</span>{{ charter.locus.from
                             }}<template v-if="charter.locus.to">–{{ charter.locus.to }}</template>
-                        </span>
-                        <span v-if="charter.language" class="pill lang" title="Language">{{ charter.language }}</span>
-                    </div>
+                        </li>
+                        <li v-if="charter.language" class="lang" title="Language">
+                            <Languages :size="15" aria-hidden="true" />
+                            <span class="sr-only">Language</span>{{ charter.language }}
+                        </li>
+                    </ul>
                 </div>
                 <h1>{{ charter.title }}</h1>
                 <div v-if="actionTypes.length" class="action-badges" aria-label="Actions in this charter">
@@ -310,16 +327,7 @@ const entities = computed(() => {
                         :title="lines ? 'Line breaks as in the manuscript' : 'Running text'"
                         @click="lines = !lines"
                     >
-                        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                            <path
-                                d="M2 3.5h12M2 8h9a2.5 2.5 0 0 1 0 5H7m0 0 1.8-1.8M7 13l1.8 1.8"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            />
-                        </svg>
+                        <WrapText :size="15" aria-hidden="true" />
                         Line breaks
                     </button>
                     <button
@@ -330,16 +338,7 @@ const entities = computed(() => {
                         aria-controls="glossary"
                         @click="glossaryOpen = !glossaryOpen"
                     >
-                        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                            <path
-                                d="M3 2.5h7.5L13 5v8.5H3zM5.5 6.5h5M5.5 9h5M5.5 11.5h3"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.4"
-                                stroke-linejoin="round"
-                                stroke-linecap="round"
-                            />
-                        </svg>
+                        <BookText :size="15" aria-hidden="true" />
                         Glossary
                     </button>
                 </div>
@@ -349,6 +348,37 @@ const entities = computed(() => {
             <div @mouseover="onTextOver" @mouseleave="onTextLeave" @click="onTextClick" @keydown="onTextKey">
                 <TeiText :charter="charter" :lines="lines" />
             </div>
+
+            <footer class="charter-footer">
+                <dl>
+                    <div v-if="manuscriptLine">
+                        <dt>Manuscript</dt>
+                        <dd>{{ manuscriptLine }}</dd>
+                    </div>
+                    <div v-for="(r, i) in charter.edition.resp" :key="i">
+                        <dt>{{ r.resp || "Responsibility" }}</dt>
+                        <dd>{{ r.name }}</dd>
+                    </div>
+                    <div v-if="charter.edition.funder">
+                        <dt>Funded by</dt>
+                        <dd>
+                            <a
+                                v-if="charter.edition.funder.ref"
+                                :href="charter.edition.funder.ref"
+                                rel="noopener"
+                                target="_blank"
+                            >
+                                {{ charter.edition.funder.name }}
+                            </a>
+                            <template v-else>{{ charter.edition.funder.name }}</template>
+                        </dd>
+                    </div>
+                    <div v-if="charter.edition.publication?.length">
+                        <dt>Publication</dt>
+                        <dd><TeiNodes :nodes="charter.edition.publication" /></dd>
+                    </div>
+                </dl>
+            </footer>
         </section>
     </article>
 </template>

@@ -53,6 +53,14 @@ export interface Charter {
     language?: string
     summary?: TeiNode[]
     physDesc: { hand?: string; script?: TeiNode[]; additions?: TeiNode[] }
+    /** msDesc/msIdentifier: the manuscript (book) the charter is copied in */
+    manuscript: { country?: string; settlement?: string; repository?: string; idno?: string; name?: string }
+    /** titleStmt / publicationStmt: who made the edition and who funded it */
+    edition: {
+        publication?: TeiNode[]
+        resp: { resp?: string; name?: string; key?: string }[]
+        funder?: { name: string; ref?: string }
+    }
     pages: PageRef[]
     body: TeiNode[]
     notes: Record<string, TeiNode[]>

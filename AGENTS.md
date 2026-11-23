@@ -15,7 +15,7 @@ UI language: **English**.
   the output (`.output/public`) is served by **Apache** (`public/.htaccess`).
 - **Build-time XML processing in TypeScript** (`scripts/build-data`, `@xmldom/xmldom`).
   No SaxonJS/XSLT. TEI → JSON in `public/data`, then Nuxt renders from that JSON.
-- **Nuxt 4 / Vue 3.** Search: **MiniSearch**. Map: **MapLibre** (planned). Person network: **sigma.js** (planned).
+- **Nuxt 4 / Vue 3.** Icons: **Lucide** (`lucide-vue-next`, slim strokes: `.lucide { stroke-width: 1.5 }`; no other icon sets, no inline SVG icons). Search: **MiniSearch**. Map: **MapLibre** (planned). Person network: **sigma.js** (planned).
 - During prerendering, data is read through `server/api/data/[...path]` (Nitro server assets);
   in the browser, pages use the prerendered payloads. Only the search index is fetched from `/data/`.
 
@@ -63,7 +63,9 @@ UI language: **English**.
   plain small uppercase text in lists (no badge styling). Hover highlights in yellow; a badge click jumps to
   the next occurrence and keeps it highlighted until the next click.
 - Page breaks render on their own line; line numbers always sit next to their line.
-- Header is sticky. Date, folios and language are pills right-aligned in the first row (language uppercase).
+- Header is sticky. First row: collection and charter number left; manuscript shelfmark, date, folios and language
+  right, each as a Lucide icon + plain text (no badge styling; language uppercase).
+- Below the transcript a footer shows manuscript (`msIdentifier`), `respStmt`, `funder` and `publicationStmt`.
 - Legend toggles highlighting per category; "Line breaks" and "Glossary" are toggle buttons
   (coloured when on, grey when off). The glossary slides in over the facsimile.
 - The facsimile pane shows one page, filling the pane; a pager with page tiles at the bottom
