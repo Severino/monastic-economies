@@ -1,0 +1,22 @@
+{
+  "name": "monastic-economies",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "data": "tsx scripts/build-data/index.ts",
+    "data:placeholder-index": "tsx scripts/make-placeholder-index.ts",
+    "dev": "npm run data && nuxt dev",
+    "generate": "npm run data && nuxt generate",
+    "preview": "npx serve .output/public",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "minisearch": "^7.2.0",
+    "nuxt": "^4.6.4"
+  },
+  "devDependencies": {
+    "@xmldom/xmldom": "^0.9.12",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

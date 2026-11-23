@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified"
+    targetNamespace="Farfa-and-Fulda" xmlns:fnf="Farfa-and-Fulda">
+
+    <xs:simpleType name="listOfReferences">
+        <xs:list itemType="xs:anyURI" />
+    </xs:simpleType>
+
+    <xs:simpleType name="partCharter">
+        <xs:annotation>
+            <xs:documentation>Main parts of a charter</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:NCName">
+            <xs:enumeration value="protocol" />
+            <xs:enumeration value="contextus" />
+            <xs:enumeration value="eschatocol" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="subpartCharter">
+        <xs:annotation>
+            <xs:documentation>Gives the substructure og the charter. Is used inside of <i>protocol</i>
+                , <i>contextus</i>, or <i>eschatocol</i></xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:NCName">
+            <xs:enumeration value="apprecatio" />
+            <xs:enumeration value="arenga" />
+            <xs:enumeration value="clausulae" />
+            <xs:enumeration value="corroboratio" />
+            <xs:enumeration value="datatio" />
+            <xs:enumeration value="dispositio" />
+            <xs:enumeration value="inscriptio" />
+            <xs:enumeration value="intitulatio" />
+            <xs:enumeration value="invocatio" />
+            <xs:enumeration value="narratio" />
+            <xs:enumeration value="notificatio" />
+            <xs:enumeration value="salutatio" />
+            <xs:enumeration value="sanctio" />
+            <xs:enumeration value="subscriptio" />
+        </xs:restriction>
+    </xs:simpleType>
+
+
+    <xs:simpleType name="role">
+        <xs:annotation>
+            <xs:documentation>Holds the information of a person or place in the charter context</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:NCName">
+
+            <xs:enumeration value="beneficiary" />
+
+            <xs:enumeration value="beneficiumHolder" />
+            <xs:enumeration value="consenter" />
+            <xs:enumeration value="intervenor" />
+            <xs:enumeration value="issuer" />
+            <xs:enumeration value="messenger" />
+            <xs:enumeration value="notary" />
+            <xs:enumeration value="oblate" />
+            <xs:enumeration value="promisor" />
+            <xs:enumeration value="recipient" />
+            <xs:enumeration value="scribe" />
+            <xs:enumeration value="witness" />
+            <xs:enumeration value="beneficium" />
+            <xs:enumeration value="placeIssue" />
+            <xs:enumeration value="possession" />
+        </xs:restriction>
+    </xs:simpleType>
+
+
+    <xs:simpleType name="measurement">
+        <xs:annotation>
+            <xs:documentation>Categories of area, payment, and use</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:NCName">
+
+            <xs:enumeration value="agricultural" />
+            <xs:enumeration value="animals" />
+            <xs:enumeration value="church" />
+
+            <xs:enumeration value="dependents" />
+            <xs:enumeration value="labour" />
+            <xs:enumeration value="land" />
+            <xs:enumeration value="monetary" />
+            <xs:enumeration value="spiritual" />
+
+            <xs:enumeration value="weight" />
+            <xs:enumeration value="otherPayment" />
+
+            <xs:enumeration value="restrictedUse" />
+            <xs:enumeration value="unrestrictedUse" />
+            <xs:enumeration value="oneGeneration" />
+
+            <xs:enumeration value="area" />
+            <xs:enumeration value="boundaryClause" />
+            <xs:enumeration value="building" />
+
+        </xs:restriction>
+    </xs:simpleType>
+
+
+    <xs:simpleType name="legalAction">
+        <xs:annotation>
+            <xs:documentation>Categories on actions</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:NCName">
+            <xs:enumeration value="concession" />
+            <xs:enumeration value="condition" />
+
+            <xs:enumeration value="confirmation" />
+            <xs:enumeration value="donation" />
+            <xs:enumeration value="exchange" />
+            <xs:enumeration value="immunity" />
+            <xs:enumeration value="judgement" />
+            <xs:enumeration value="levy" />
+            <xs:enumeration value="oblation" />
+            <xs:enumeration value="otherAct" />
+            <xs:enumeration value="petition" />
+            <xs:enumeration value="precarium" />
+            <xs:enumeration value="privilege" />
+            <xs:enumeration value="protection" />
+
+            <xs:enumeration value="sale" />
+
+        </xs:restriction>
+    </xs:simpleType>
+
+
+    <xs:simpleType name="action-or-measurement">
+        <xs:union memberTypes="fnf:measurement fnf:legalAction" />
+    </xs:simpleType>
+
+    <xs:simpleType name="actions-n-measurements">
+        <xs:list itemType="fnf:action-or-measurement" />
+    </xs:simpleType>
+
+
+    <xs:simpleType name="placeType">
+        <xs:restriction base="xs:NCName">
+            <xs:enumeration value="campus" />
+            <xs:enumeration value="casa" />
+            <xs:enumeration value="casalis" />
+            <xs:enumeration value="castrum" />
+            <xs:enumeration value="cathedral" />
+            <xs:enumeration value="city" />
+            <xs:enumeration value="church" />
+            <xs:enumeration value="curtis" />
+            <xs:enumeration value="curticella" />
+            <xs:enumeration value="domuscultae" />
+            <xs:enumeration value="fundus" />
+            <xs:enumeration value="gualdus" />
+            <xs:enumeration value="locus" />
+            <xs:enumeration value="marca" />
+            <xs:enumeration value="massa" />
+            <xs:enumeration value="monastery" />
+            <xs:enumeration value="other" />
+            <xs:enumeration value="palace" />
+            <xs:enumeration value="region" />
+            <xs:enumeration value="topographic" />
+            <xs:enumeration value="unknown" />
+            <xs:enumeration value="via" />
+            <xs:enumeration value="villa" />
+        </xs:restriction>
+    </xs:simpleType>
+
+
+    <xs:simpleType name="placeTypes">
+        <xs:list itemType="fnf:placeType" />
+    </xs:simpleType>
+
+
+    <xs:simpleType name="relationType">
+        <xs:annotation>
+            <xs:documentation>Name on a relation</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:NCName">
+
+            <xs:enumeration value="ancestor" />
+            <xs:enumeration value="family" />
+            <xs:enumeration value="marriage" />
+            <xs:enumeration value="parent" />
+            <xs:enumeration value="sibling" />
+
+
+            <xs:enumeration value="adopted" />
+            <xs:enumeration value="dependant" />
+            <xs:enumeration value="founder" />
+            <xs:enumeration value="landlord" />
+
+            <xs:enumeration value="freed" />
+            <xs:enumeration value="godparent" />
+            <xs:enumeration value="head" />
+            <xs:enumeration value="neighbour" />
+            <xs:enumeration value="nepos" />
+
+
+            <xs:enumeration value="unknown" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="relationCategory">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="family" />
+            <xs:enumeration value="social" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="renditions">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="ital" />
+
+            <xs:enumeration value="overstrike" />
+
+            <xs:enumeration value="partRed" />
+            <xs:enumeration value="red" />
+            <xs:enumeration value="underline" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="annotationBlock">
+        <xs:restriction base="xs:NCName">
+            <xs:enumeration value="indicesFarfa" />
+            <xs:enumeration value="indicesFulda" />
+            <xs:enumeration value="onCharter" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="dating">
+        <xs:union memberTypes="xs:date xs:gYear xs:gYearMonth xs:gMonthDay" />
+    </xs:simpleType>
+
+    <xs:simpleType name="textType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="biblical" />
+            <xs:enumeration value="canonical" />
+            <xs:enumeration value="charter" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="bibleReference">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[A-z]{2,6}\.? \d{1,3}:\d{1,3}" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="foliation">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="(f-)?\d+[rv]?" />
+        </xs:restriction>
+    </xs:simpleType>
+</xs:schema>
