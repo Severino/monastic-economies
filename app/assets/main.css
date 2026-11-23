@@ -1024,3 +1024,13 @@ select {
 .entry.disabled {
     opacity: 0.55;
 }
+
+@media (max-width: 30rem) {
+    .site-header {
+        gap: 1rem;
+        padding: 0 0.75rem;
+    }
+    .site-header nav {
+        gap: 0.75rem;
+    }
+}

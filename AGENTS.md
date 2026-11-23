@@ -88,6 +88,14 @@ UI language: **English**.
   (`monastic-economies:theme`). An inline script in `nuxt.config.ts` applies the stored choice before the first
   paint. Define new colour tokens for both themes (system-dark media query and `[data-theme="dark"]`).
 
+## Map
+
+- `/map` (`PlacesMap.vue`, client-only, MapLibre loaded via dynamic import): all places with coordinates,
+  clustered at low zoom, circle size by number of charters. Data comes from the `places` payload, not from `places.geojson`.
+- Basemap: OpenFreeMap vector styles (`positron` light, `dark` dark; free, no API key), switched with the site theme
+  (`useDarkTheme`). Layers are re-added on every `style.load`. Layer colours come from the CSS tokens.
+- The selected place is `?place=<id>` (push); a side panel (bottom sheet on phones) lists its charters.
+
 ## Code style
 
 - **Indentation: 4 spaces** (JSON, Markdown and YAML: 2).

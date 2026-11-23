@@ -5,6 +5,7 @@
             <nav>
                 <NuxtLink to="/charters">Charters</NuxtLink>
                 <NuxtLink to="/persons">Persons</NuxtLink>
+                <NuxtLink to="/map">Map</NuxtLink>
             </nav>
             <div class="header-actions">
                 <ThemeToggle />

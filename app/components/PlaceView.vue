@@ -27,6 +27,7 @@ const entries = computed(() => (catalog.value ?? []).filter((e) => roles.value[e
         <p v-if="place.coords" class="muted">
             {{ place.coords[1].toFixed(4) }}, {{ place.coords[0].toFixed(4) }}
             <template v-if="place.cert"> · certainty: {{ place.cert }}</template>
+            · <NuxtLink :to="{ path: '/map', query: { place: place.id } }">Show on map</NuxtLink>
         </p>
         <p v-else class="muted">No coordinates.</p>
         <h2>Charters ({{ entries.length }})</h2>
