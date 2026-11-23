@@ -28,17 +28,46 @@ const OUT = join(ROOT, 'public', 'data')
 
 console.log(`data: ${relative(ROOT, DATA) || DATA}`)
 const issues: BuildIssue[] = []
-let fatal = false
+let fatal = 0 // files that could not be read or parsed
 
 function load(file: string): El | undefined {
-  const errors: string[] = []
-  const doc = parseXml(readFileSync(file, 'utf8'), (m) => errors.push(m))
-  if (errors.length || !doc.documentElement) {
-    errors.forEach((m) => issues.push({ level: 'error', file: rel(file), message: m }))
-    fatal = true
+  const fail = (message: string) => {
+    issues.push({ level: 'error', file: rel(file), message })
+    fatal++
     return undefined
   }
+  let xml: string
+  try {
+    xml = readXml(file)
+  } catch (e) {
+    return fail(`cannot read file: ${(e as Error).message}`)
+  }
+  if (!xml.trim()) return fail('file is empty')
+
+  const errors: string[] = []
+  let doc
+  try {
+    // xmldom reports some errors via onError and throws on fatal ones
+    doc = parseXml(xml, (m) => errors.push(m))
+  } catch (e) {
+    errors.push((e as Error).message)
+  }
+  if (errors.length || !doc?.documentElement) {
+    if (!errors.length) errors.push('no root element')
+    const msgs = [...new Set(errors.map((m) => m.split('\n')[0].trim()))]
+    const hint = msgs.some((m) => /root element/.test(m)) ? ' (file does not start with an XML element: not XML, or wrong encoding?)' : ''
+    return fail('XML parse error: ' + msgs.join('; ') + hint)
+  }
   return doc.documentElement as unknown as El
+}
+
+/** Reads UTF-8 (with or without BOM) and UTF-16 files (as saved by some Windows editors). */
+function readXml(file: string): string {
+  const buf = readFileSync(file)
+  if (buf[0] === 0xff && buf[1] === 0xfe) return buf.subarray(2).toString('utf16le')
+  if (buf[0] === 0xfe && buf[1] === 0xff) return Buffer.from(buf.subarray(2)).swap16().toString('utf16le')
+  const s = buf.toString('utf8')
+  return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s
 }
 
 const rel = (f: string) => relative(ROOT, f)
@@ -185,4 +214,7 @@ console.log(
     `issues: ${errors} error(s), ${issues.length - errors} warning(s) -> public/data/build-report.json`,
 )
 for (const i of issues) console.log(`  [${i.level}] ${i.file}: ${i.message}`)
-if (fatal) process.exit(1)
+if (fatal) {
+  console.error(`\nBuild failed: ${fatal} file(s) could not be read or parsed (see "XML parse error" / "file is empty" above).`)
+  process.exit(1)
+}
