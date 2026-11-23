@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Select with a text filter: a button opens a popover with a search box and the matching options.
-import { Check, ChevronDown } from "lucide-vue-next"
+import { Check, ChevronDown, X } from "lucide-vue-next"
 import { fold, markParts, queryTerms } from "#shared/search"
 
 export interface FilterOption {
@@ -49,9 +49,14 @@ function hide(focusButton = false) {
     open.value = false
     if (focusButton) root.value?.querySelector<HTMLButtonElement>(".fs-button")?.focus()
 }
+// choosing the selected option again clears the filter
 function choose(o: FilterOption | undefined) {
     if (!o) return
-    if (o.value !== props.modelValue) emit("update:modelValue", o.value)
+    emit("update:modelValue", o.value === props.modelValue ? "" : o.value)
+    hide(true)
+}
+function clear() {
+    emit("update:modelValue", "")
     hide(true)
 }
 function scrollToActive() {
@@ -102,6 +107,16 @@ onBeforeUnmount(() => {
         >
             <span class="fs-value">{{ current?.label ?? allLabel }}</span>
             <ChevronDown :size="16" class="fs-chevron" />
+        </button>
+        <button
+            v-if="modelValue"
+            type="button"
+            class="fs-clear"
+            :aria-label="`Clear ${ariaLabel.toLowerCase()} filter`"
+            title="Clear"
+            @click="clear"
+        >
+            <X :size="15" />
         </button>
         <div v-if="open" class="fs-popover">
             <input
