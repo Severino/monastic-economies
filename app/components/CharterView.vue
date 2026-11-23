@@ -68,17 +68,38 @@ const typesOf = (el: HTMLElement) => (el.dataset.types ?? '').split(/\s+/).filte
 const badgeLit = (t: string) => hoverTypes.value.includes(t) || current.value?.type === t ||
   (!current.value?.type && current.value && typesOf(current.value.el).includes(t))
 
+const actionEls = () => [...(transcript.value?.querySelectorAll<HTMLElement>('.tei-action') ?? [])]
+const storageKey = () => `monastic-economies:selected-action:${props.id}`
+
 function setCurrent(next: typeof current.value) {
   current.value?.el.classList.remove('is-current')
   current.value = next
   next?.el.classList.add('is-current')
+  // remember the selection per charter (position among all action passages)
+  try {
+    if (next) localStorage.setItem(storageKey(), JSON.stringify({ type: next.type, index: next.index, pos: actionEls().indexOf(next.el) }))
+    else localStorage.removeItem(storageKey())
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function restoreSelection() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey()) ?? 'null')
+    const el = saved && actionEls()[saved.pos]
+    if (el) {
+      current.value = { type: saved.type ?? undefined, el, index: saved.index ?? -1 }
+      el.classList.add('is-current')
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Badge click: jump to the next occurrence of this action type. */
 function nextOccurrence(t: string) {
-  const all = [...(transcript.value?.querySelectorAll<HTMLElement>('.tei-action') ?? [])].filter((el) =>
-    typesOf(el).includes(t),
-  )
+  const all = actionEls().filter((el) => typesOf(el).includes(t))
   if (!all.length) return
   const index = current.value?.type === t ? (current.value.index + 1) % all.length : 0
   const el = all[index]!
@@ -118,7 +139,8 @@ function onTextKey(e: KeyboardEvent) {
 // any other click clears a pinned occurrence
 function onDocClick(e: MouseEvent) {
   const t = e.target as HTMLElement
-  if (!t.closest('.action-badge') && !t.closest('.tei-text')) setCurrent(null)
+  if (current.value && !t.closest('.action-badge') && !t.closest('.tei-text') && !t.closest('.charter-head') && !t.closest('.glossary'))
+    setCurrent(null)
 }
 
 /** CSS for "highlight all spans of the hovered badge type" (data-types is a token list). */
@@ -133,13 +155,24 @@ onMounted(() => {
   window.addEventListener('scroll', syncPage, { passive: true })
   document.addEventListener('click', onDocClick)
   syncPage()
+  restoreSelection()
 })
 onBeforeUnmount(() => {
   transcript.value?.removeEventListener('scroll', syncPage)
   window.removeEventListener('scroll', syncPage)
   document.removeEventListener('click', onDocClick)
 })
-watch(() => props.id, () => setCurrent(null))
+watch(
+  () => props.id,
+  () => {
+    current.value?.el.classList.remove('is-current')
+    current.value = null
+    nextTick(restoreSelection)
+  },
+)
+
+// ---- glossary panel (persons, places, organisations of this charter) ------------
+const glossaryOpen = ref(false)
 
 // ---- entity lists ---------------------------------------------------------------
 const entities = computed(() => {
@@ -162,17 +195,60 @@ const entities = computed(() => {
   <article v-else-if="charter" class="split charter-view">
     <section class="pane facsimile" aria-label="Facsimile">
       <FacsimileViewer :pages="charter.pages" :current="currentPage" @select="selectPage" />
+      <Transition name="slide">
+        <aside v-if="glossaryOpen" id="glossary" class="glossary entities" aria-label="Glossary">
+          <div class="glossary-head">
+            <h2>Glossary</h2>
+            <button type="button" class="icon-btn" aria-label="Close glossary" @click="glossaryOpen = false">
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
+            </button>
+          </div>
+        <div v-if="entities.persons.length">
+          <h3>Persons</h3>
+          <ul>
+            <li v-for="p in entities.persons" :key="p.id">
+              <NuxtLink :to="`/persons/${p.id}`">{{ persons?.[p.id]?.name ?? p.id }}</NuxtLink>
+              <span v-if="p.roles.length" class="muted"> · {{ p.roles.map(label).join(', ') }}</span>
+            </li>
+          </ul>
+        </div>
+        <div v-if="entities.places.length">
+          <h3>Places</h3>
+          <ul>
+            <li v-for="p in entities.places" :key="p.id">
+              <NuxtLink :to="`/places/${p.id}`">{{ placeName(places?.[p.id]) }}</NuxtLink>
+              <span v-if="p.roles.length" class="muted"> · {{ p.roles.map(label).join(', ') }}</span>
+            </li>
+          </ul>
+        </div>
+        <div v-if="entities.orgs.length">
+          <h3>Organisations</h3>
+          <ul>
+            <li v-for="o in entities.orgs" :key="o.id">
+              {{ orgName(orgs?.[o.id]) }}
+              <span v-if="o.roles.length" class="muted"> · {{ o.roles.map(label).join(', ') }}</span>
+            </li>
+          </ul>
+        </div>
+        </aside>
+      </Transition>
     </section>
 
     <section ref="transcript" class="pane transcript">
       <header ref="head" class="charter-head">
-        <p class="eyebrow">{{ charter.collection }} · {{ charter.bookId }} · no. {{ charter.number }}</p>
+        <div class="head-row">
+          <p class="eyebrow">{{ charter.collection }} · {{ charter.bookId }} · no. {{ charter.number }}</p>
+          <div class="meta-pills">
+            <span class="pill" title="Date">
+              <time :datetime="charter.date.when">{{ formatDate(charter.date) || 'undated' }}</time>
+            </span>
+            <span v-if="charter.locus.from" class="pill" title="Folios">
+              fol. {{ charter.locus.from }}<template v-if="charter.locus.to">–{{ charter.locus.to }}</template>
+            </span>
+            <span v-if="charter.language" class="pill lang" title="Language">{{ charter.language }}</span>
+          </div>
+        </div>
         <h1>{{ charter.title }}</h1>
-        <dl class="meta">
-          <div><dt>Date</dt><dd>{{ formatDate(charter.date) || '–' }}</dd></div>
-          <div><dt>Folios</dt><dd>{{ charter.locus.from }} – {{ charter.locus.to }}</dd></div>
-          <div><dt>Language</dt><dd>{{ charter.language }}</dd></div>
-        </dl>
         <div v-if="actionTypes.length" class="action-badges" aria-label="Actions in this charter">
           <button
             v-for="t in actionTypes"
@@ -202,7 +278,7 @@ const entities = computed(() => {
           </button>
           <button
             type="button"
-            class="legend-item line-toggle"
+            class="legend-item toggle-btn line-toggle"
             :class="{ off: !lines }"
             :aria-pressed="lines"
             :title="lines ? 'Line breaks as in the manuscript' : 'Running text'"
@@ -213,6 +289,19 @@ const entities = computed(() => {
             </svg>
             Line breaks
           </button>
+          <button
+            type="button"
+            class="legend-item toggle-btn glossary-toggle"
+            :class="{ off: !glossaryOpen }"
+            :aria-pressed="glossaryOpen"
+            aria-controls="glossary"
+            @click="glossaryOpen = !glossaryOpen"
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M3 2.5h7.5L13 5v8.5H3zM5.5 6.5h5M5.5 9h5M5.5 11.5h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+            </svg>
+            Glossary
+          </button>
         </div>
       </header>
 
@@ -221,35 +310,6 @@ const entities = computed(() => {
         <TeiText :charter="charter" :lines="lines" />
       </div>
 
-      <section class="entities">
-        <div v-if="entities.persons.length">
-          <h2>Persons</h2>
-          <ul>
-            <li v-for="p in entities.persons" :key="p.id">
-              <NuxtLink :to="`/persons/${p.id}`">{{ persons?.[p.id]?.name ?? p.id }}</NuxtLink>
-              <span v-if="p.roles.length" class="muted"> · {{ p.roles.map(label).join(', ') }}</span>
-            </li>
-          </ul>
-        </div>
-        <div v-if="entities.places.length">
-          <h2>Places</h2>
-          <ul>
-            <li v-for="p in entities.places" :key="p.id">
-              <NuxtLink :to="`/places/${p.id}`">{{ placeName(places?.[p.id]) }}</NuxtLink>
-              <span v-if="p.roles.length" class="muted"> · {{ p.roles.map(label).join(', ') }}</span>
-            </li>
-          </ul>
-        </div>
-        <div v-if="entities.orgs.length">
-          <h2>Organisations</h2>
-          <ul>
-            <li v-for="o in entities.orgs" :key="o.id">
-              {{ orgName(orgs?.[o.id]) }}
-              <span v-if="o.roles.length" class="muted"> · {{ o.roles.map(label).join(', ') }}</span>
-            </li>
-          </ul>
-        </div>
-      </section>
     </section>
   </article>
 </template>
