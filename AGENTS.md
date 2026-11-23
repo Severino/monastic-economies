@@ -17,7 +17,8 @@ UI language: **English**.
   No SaxonJS/XSLT. TEI → JSON in `public/data`, then Nuxt renders from that JSON.
 - **Nuxt 4 / Vue 3.** Icons: **Lucide** (`lucide-vue-next`, slim strokes: `.lucide { stroke-width: 1.5 }`; no other icon sets, no inline SVG icons). Search: **MiniSearch**. Map: **MapLibre** (planned). Person network: **sigma.js** (planned).
 - During prerendering, data is read through `server/api/data/[...path]` (Nitro server assets);
-  in the browser, pages use the prerendered payloads. Only the search index is fetched from `/data/`.
+  in the browser, pages use the prerendered payloads. Only the search index (`search-index.json`) and the plain
+  charter texts for result snippets (`texts.json`) are fetched from `/data/`.
 
 ## Data
 
@@ -54,6 +55,15 @@ UI language: **English**.
   can be rendered as a route or as a stacked overlay.
 - Per-viewer preferences live in `localStorage` (legend toggles, selected action per charter).
   Always wrap access in `try/catch` and read it after hydration (`onMounted`), so SSR and client match.
+
+## Search
+
+- Charter search (MiniSearch, `shared/search.ts`): every word must match (AND) as a word prefix, no fuzzy matching.
+  Highlighting uses the same rule (`highlightRegex`), so what is marked is what matched.
+- Results show title and issuer on one line (no "Issuer:" label), a text snippet around the first match
+  with `<mark>` and the number of matches. Action types in lists are subdued (muted colour with alpha).
+- The persons list is grouped by first letter (diacritics folded), with a letter jump bar; a Lucide icon before
+  each name shows `@sex` (Mars, Venus, faint dashed circle when unknown).
 
 ## UI conventions (charter view)
 

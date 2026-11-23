@@ -51,7 +51,7 @@ export function readIndices(root: El, into: Indices, issue: (m: string) => void)
             name: names[0] || id,
             altNames: names.slice(1),
             roleName: text(child(persName, "roleName")) || undefined,
-            sex: attr(p, "sex"),
+            sex: attr(p, "sex") ?? (attr(child(p, "sex"), "value") || text(child(p, "sex")) || undefined),
             socecStatus: text(child(p, "socecStatus")) || undefined,
             affiliations: children(p, "affiliation").map((a) => ({
                 type: attr(a, "type") ?? "family",

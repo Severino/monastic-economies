@@ -280,6 +280,8 @@ write("relations.json", { explicit: idx.relations, cooccurrence: [...cooc.values
 write("books.json", [...books.values()])
 write("places.geojson", geojson)
 write("search-index.json", search.toJSON())
+// reading text per charter, for match excerpts in the catalog (loaded lazily)
+write("texts.json", Object.fromEntries(charters.map((c) => [c.id, c.plainText])))
 // kept outside public/ so it is not deployed with the site
 const REPORT = join(ROOT, "build-report.json")
 writeFileSync(REPORT, JSON.stringify(issues, null, 2))

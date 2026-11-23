@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import MiniSearch from "minisearch"
-import { SEARCH_OPTIONS } from "#shared/search"
+import { SEARCH_OPTIONS, highlightRegex, snippet } from "#shared/search"
 
 useHead({ title: "Charters · Monastic Economies" })
 
@@ -32,9 +32,14 @@ watch(
 
 // ---- full-text search (client only; index loaded lazily) ----------------------
 const search = shallowRef<MiniSearch | null>(null)
+const texts = shallowRef<Record<string, string>>({})
 onMounted(async () => {
-    const json = await $fetch<object>("/data/search-index.json")
+    const [json, t] = await Promise.all([
+        $fetch<object>("/data/search-index.json"),
+        $fetch<Record<string, string>>("/data/texts.json"),
+    ])
     search.value = MiniSearch.loadJS(json as any, SEARCH_OPTIONS)
+    texts.value = t
 })
 
 const results = computed(() => {
@@ -66,6 +71,13 @@ const options = computed(() => {
             .sort((a, b) => a.name.localeCompare(b.name)),
         actions: uniq(c.flatMap((e) => e.actionTypes)).sort(),
     }
+})
+// highlighting: same word-prefix rule as the search
+const highlight = computed(() => (search.value ? highlightRegex(q("q")) : null))
+const snippets = computed(() => {
+    const re = highlight.value
+    if (!re) return {}
+    return Object.fromEntries(results.value.map((e) => [e.id, snippet(texts.value[e.id] ?? "", re)]))
 })
 const active = computed(() => ["q", "person", "place", "action"].some((k) => q(k)))
 </script>
@@ -107,6 +119,6 @@ const active = computed(() => ["q", "person", "place", "action"].some((k) => q(k
             <NuxtLink v-if="active" to="/charters" class="reset">Reset</NuxtLink>
         </form>
         <p class="muted">{{ results.length }} of {{ catalog?.length ?? 0 }} charters</p>
-        <CharterList :entries="results" />
+        <CharterList :entries="results" :highlight="highlight" :snippets="snippets" />
     </div>
 </template>

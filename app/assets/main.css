@@ -744,12 +744,34 @@ select {
     font: 600 0.66rem var(--font-ui);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: color-mix(in srgb, var(--muted) 60%, transparent);
 }
 .charter-card .date {
     grid-row: span 3;
     color: var(--muted);
     font-variant-numeric: tabular-nums;
+}
+.charter-card .title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.6rem;
+}
+.charter-card .snippet {
+    font-family: var(--font-text);
+    color: var(--muted);
+    word-break: break-word;
+}
+.charter-card .match-count {
+    margin-left: 0.4rem;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.charter-card mark {
+    background: var(--hl);
+    color: inherit;
+    border-radius: 2px;
 }
 .charter-card .title {
     font-family: var(--font-text);
@@ -762,9 +784,40 @@ select {
 .preview .open {
     float: right;
 }
-.grid-list {
+.letter-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.7rem;
+    margin: 0.5rem 0 1rem;
+    font-family: var(--font-ui);
+}
+.letter-group h2 {
+    margin: 1.2rem 0 0.4rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.1rem;
+    scroll-margin-top: calc(var(--header-h) + 0.5rem);
+}
+.person-list {
     columns: 16rem;
-    padding-left: 1.1rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.person-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.15rem 0;
+    break-inside: avoid;
+}
+.sex-icon {
+    flex: none;
+    align-self: center;
+    color: var(--muted);
+}
+.sex-icon.unknown {
+    opacity: 0.4;
 }
 .sex {
     color: var(--muted);

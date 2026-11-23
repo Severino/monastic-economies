@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import type { CatalogEntry } from "#shared/types"
+import { markParts, type TextPart } from "#shared/search"
 
-defineProps<{ entries: CatalogEntry[]; roles?: Record<string, string[]> }>()
+const props = defineProps<{
+    entries: CatalogEntry[]
+    roles?: Record<string, string[]>
+    /** matches of the current search, highlighted in title, issuers and snippet */
+    highlight?: RegExp | null
+    snippets?: Record<string, { parts: TextPart[]; count: number } | null>
+}>()
 const { data: persons } = await usePersons()
+
+const issuers = (e: CatalogEntry) => e.issuers.map((i) => persons.value?.[i]?.name ?? i).join(", ")
+const mark = (s: string): TextPart[] => (props.highlight ? markParts(s, props.highlight) : [{ text: s, hit: false }])
 </script>
 
 <template>
@@ -10,13 +20,31 @@ const { data: persons } = await usePersons()
         <li v-for="e in entries" :key="e.id">
             <NuxtLink :to="`/charters/${e.id}`" class="charter-card">
                 <span class="date">{{ formatDate(e.date) || "–" }}</span>
-                <span class="title">{{ e.title }}</span>
-                <span class="muted small">
-                    <template v-if="e.issuers.length"
-                        >Issuer: {{ e.issuers.map((i) => persons?.[i]?.name ?? i).join(", ") }}</template
+                <span class="title-row">
+                    <span class="title"
+                        ><template v-for="(p, i) in mark(e.title)" :key="i"
+                            ><mark v-if="p.hit">{{ p.text }}</mark
+                            ><template v-else>{{ p.text }}</template></template
+                        ></span
                     >
-                    <template v-if="roles?.[e.id]?.length"> · as {{ roles[e.id]!.map(label).join(", ") }}</template>
+                    <span v-if="e.issuers.length || roles?.[e.id]?.length" class="issuer muted small"
+                        ><template v-for="(p, i) in mark(issuers(e))" :key="i"
+                            ><mark v-if="p.hit">{{ p.text }}</mark
+                            ><template v-else>{{ p.text }}</template></template
+                        ><template v-if="roles?.[e.id]?.length">
+                            · as {{ roles[e.id]!.map(label).join(", ") }}</template
+                        ></span
+                    >
                 </span>
+                <span v-if="snippets?.[e.id]" class="snippet small"
+                    ><template v-for="(p, i) in snippets[e.id]!.parts" :key="i"
+                        ><mark v-if="p.hit">{{ p.text }}</mark
+                        ><template v-else>{{ p.text }}</template></template
+                    >
+                    <span class="match-count"
+                        >{{ snippets[e.id]!.count }} match{{ snippets[e.id]!.count === 1 ? "" : "es" }}</span
+                    ></span
+                >
                 <span v-if="e.actionTypes.length" class="action-types">{{ e.actionTypes.map(label).join(" · ") }}</span>
             </NuxtLink>
         </li>
