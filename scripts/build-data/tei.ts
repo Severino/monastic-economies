@@ -1,8 +1,8 @@
 // Small DOM helpers for TEI documents parsed with @xmldom/xmldom.
-import { DOMParser } from '@xmldom/xmldom'
-import type { TeiNode } from '../../shared/types'
+import { DOMParser } from "@xmldom/xmldom"
+import type { TeiNode } from "../../shared/types"
 
-export const TEI_NS = 'http://www.tei-c.org/ns/1.0'
+export const TEI_NS = "http://www.tei-c.org/ns/1.0"
 
 // xmldom ships its own DOM types; we only need a few members.
 export type El = {
@@ -20,9 +20,9 @@ export type El = {
 export function parseXml(xml: string, onError: (msg: string) => void) {
     return new DOMParser({
         onError: (level: string, msg: string) => {
-            if (level !== 'warning') onError(msg)
+            if (level !== "warning") onError(msg)
         },
-    }).parseFromString(xml, 'text/xml')
+    }).parseFromString(xml, "text/xml")
 }
 
 export const isEl = (n: any): n is El => n?.nodeType === 1
@@ -54,36 +54,36 @@ export function descendants(el: El, name: string): El[] {
 }
 
 export const xmlId = (el: El) =>
-    el.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'id') ?? el.getAttribute('xml:id') ?? undefined
+    el.getAttributeNS("http://www.w3.org/XML/1998/namespace", "id") ?? el.getAttribute("xml:id") ?? undefined
 
 export const xmlLang = (el: El) =>
-    el.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'lang') ?? el.getAttribute('xml:lang') ?? undefined
+    el.getAttributeNS("http://www.w3.org/XML/1998/namespace", "lang") ?? el.getAttribute("xml:lang") ?? undefined
 
 export const attr = (el: El | undefined, name: string) => el?.getAttribute(name) || undefined
 
 /** Plain text of an element with collapsed whitespace. */
 export function text(el: El | undefined): string {
-    if (!el) return ''
+    if (!el) return ""
     return collapse(rawText(el))
 }
 
 function rawText(n: any): string {
     if (n.nodeType === 3 || n.nodeType === 4) return n.data
-    if (!isEl(n)) return ''
-    return Array.from(n.childNodes).map(rawText).join('')
+    if (!isEl(n)) return ""
+    return Array.from(n.childNodes).map(rawText).join("")
 }
 
-export const collapse = (s: string) => s.replace(/\s+/g, ' ').trim()
+export const collapse = (s: string) => s.replace(/\s+/g, " ").trim()
 
 /** Strips a leading '#' from every token of a reference attribute. */
 export const normaliseRefs = (v: string) =>
     v
         .trim()
         .split(/\s+/)
-        .map((t) => (t.startsWith('#') ? t.slice(1) : t))
-        .join(' ')
+        .map((t) => (t.startsWith("#") ? t.slice(1) : t))
+        .join(" ")
 
-const REF_ATTRS = new Set(['ref', 'facs', 'corresp', 'target', 'active', 'passive', 'mutual'])
+const REF_ATTRS = new Set(["ref", "facs", "corresp", "target", "active", "passive", "mutual"])
 
 /**
  * Converts mixed content into the compact TeiNode tree.
@@ -94,15 +94,15 @@ export function toTree(el: El, onRef?: (attr: string, raw: string) => void): Tei
     const out: TeiNode[] = []
     for (const n of Array.from(el.childNodes)) {
         if (n.nodeType === 3 || n.nodeType === 4) {
-            const s = (n.data as string).replace(/\s+/g, ' ')
+            const s = (n.data as string).replace(/\s+/g, " ")
             if (!s) continue
             const last = out[out.length - 1]
-            if (typeof last === 'string') out[out.length - 1] = last + s
+            if (typeof last === "string") out[out.length - 1] = last + s
             else out.push(s)
         } else if (isEl(n)) {
             const a: Record<string, string> = {}
             for (const at of Array.from(n.attributes)) {
-                if (at.name === 'xmlns' || at.name.startsWith('xmlns:')) continue
+                if (at.name === "xmlns" || at.name.startsWith("xmlns:")) continue
                 const key = at.name // keeps "xml:id", "xml:lang"
                 let value = at.value
                 if (REF_ATTRS.has(key)) {
@@ -112,7 +112,7 @@ export function toTree(el: El, onRef?: (attr: string, raw: string) => void): Tei
                 a[key] = value
             }
             const c = toTree(n, onRef)
-            const node: TeiNode = { t: n.localName ?? '' }
+            const node: TeiNode = { t: n.localName ?? "" }
             if (Object.keys(a).length) node.a = a
             if (c.length) node.c = c
             out.push(node)
@@ -124,11 +124,11 @@ export function toTree(el: El, onRef?: (attr: string, raw: string) => void): Tei
 /** Removes leading/trailing whitespace-only strings and trims the outer text. */
 export function trimNodes(nodes: TeiNode[]): TeiNode[] {
     const out = [...nodes]
-    while (typeof out[0] === 'string' && !out[0].trim()) out.shift()
-    while (typeof out[out.length - 1] === 'string' && !(out[out.length - 1] as string).trim()) out.pop()
-    if (typeof out[0] === 'string') out[0] = out[0].trimStart()
+    while (typeof out[0] === "string" && !out[0].trim()) out.shift()
+    while (typeof out[out.length - 1] === "string" && !(out[out.length - 1] as string).trim()) out.pop()
+    if (typeof out[0] === "string") out[0] = out[0].trimStart()
     const li = out.length - 1
-    if (typeof out[li] === 'string') out[li] = (out[li] as string).trimEnd()
+    if (typeof out[li] === "string") out[li] = (out[li] as string).trimEnd()
     return out
 }
 
@@ -137,25 +137,25 @@ export function trimNodes(nodes: TeiNode[]): TeiNode[] {
  * keeps additions, drops deletions and notes.
  */
 export function plainText(nodes: TeiNode[]): string {
-    let s = ''
+    let s = ""
     let join = false // previous token was lb[@break="no"]
     const walk = (ns: TeiNode[]) => {
         for (const n of ns) {
-            if (typeof n === 'string') {
+            if (typeof n === "string") {
                 s += join ? n.trimStart() : n
                 if (n.trim()) join = false
                 continue
             }
-            if (n.t === 'del' || n.t === 'note' || n.t === 'metamark') continue
-            if (n.t === 'lb' || n.t === 'pb' || n.t === 'cb') {
-                if (n.a?.break === 'no') {
-                    s = s.replace(/\s+$/, '')
+            if (n.t === "del" || n.t === "note" || n.t === "metamark") continue
+            if (n.t === "lb" || n.t === "pb" || n.t === "cb") {
+                if (n.a?.break === "no") {
+                    s = s.replace(/\s+$/, "")
                     join = true
-                } else if (!join) s += ' '
+                } else if (!join) s += " "
                 continue
             }
             if (n.c) walk(n.c)
-            if (n.t === 'ab' || n.t === 'head' || n.t === 'div') s += ' '
+            if (n.t === "ab" || n.t === "head" || n.t === "div") s += " "
         }
     }
     walk(nodes)
@@ -169,21 +169,21 @@ export function plainText(nodes: TeiNode[]): string {
 export function joinBrokenWords(nodes: TeiNode[]): TeiNode[] {
     for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i]
-        if (typeof n === 'string') continue
+        if (typeof n === "string") continue
         if (n.c) n.c = joinBrokenWords(n.c)
-        if ((n.t === 'lb' || n.t === 'pb' || n.t === 'cb') && n.a?.break === 'no') {
-            if (typeof nodes[i - 1] === 'string') nodes[i - 1] = (nodes[i - 1] as string).trimEnd()
-            if (typeof nodes[i + 1] === 'string') nodes[i + 1] = (nodes[i + 1] as string).trimStart()
+        if ((n.t === "lb" || n.t === "pb" || n.t === "cb") && n.a?.break === "no") {
+            if (typeof nodes[i - 1] === "string") nodes[i - 1] = (nodes[i - 1] as string).trimEnd()
+            if (typeof nodes[i + 1] === "string") nodes[i + 1] = (nodes[i + 1] as string).trimStart()
         }
     }
-    return nodes.filter((n) => n !== '')
+    return nodes.filter((n) => n !== "")
 }
 
-const BLOCK_ELEMENTS = new Set(['div', 'ab', 'head', 'p'])
+const BLOCK_ELEMENTS = new Set(["div", "ab", "head", "p"])
 const isBlock = (n: TeiNode | undefined): n is Exclude<TeiNode, string> =>
-    !!n && typeof n !== 'string' && BLOCK_ELEMENTS.has(n.t)
-const isLb = (n: TeiNode | undefined): n is Exclude<TeiNode, string> => !!n && typeof n !== 'string' && n.t === 'lb'
-const isBlank = (n: TeiNode) => typeof n === 'string' && !n.trim()
+    !!n && typeof n !== "string" && BLOCK_ELEMENTS.has(n.t)
+const isLb = (n: TeiNode | undefined): n is Exclude<TeiNode, string> => !!n && typeof n !== "string" && n.t === "lb"
+const isBlank = (n: TeiNode) => typeof n === "string" && !n.trim()
 
 /**
  * Moves line breaks that sit between or at the end of blocks (div/ab/head) to
@@ -194,7 +194,7 @@ export function hoistLineBreaks(nodes: TeiNode[]): TeiNode[] {
     // 1. children first; trailing lbs of a block move out behind the block
     const flat: TeiNode[] = []
     for (const n of nodes) {
-        if (typeof n === 'string' || !n.c) {
+        if (typeof n === "string" || !n.c) {
             flat.push(n)
             continue
         }
@@ -230,6 +230,6 @@ function prependLb(block: Exclude<TeiNode, string>, lb: TeiNode) {
     const c = (block.c ??= [])
     const first = c.find((x) => !isBlank(x))
     // descend into nested blocks (div > ab) but keep a head's own first line
-    if (isBlock(first) && block.t === 'div' && !c.slice(0, c.indexOf(first)).some(isLb)) return prependLb(first, lb)
+    if (isBlock(first) && block.t === "div" && !c.slice(0, c.indexOf(first)).some(isLb)) return prependLb(first, lb)
     c.unshift(lb)
 }

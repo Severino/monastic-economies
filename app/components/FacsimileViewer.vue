@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PageRef } from '#shared/types'
+import type { PageRef } from "#shared/types"
 
 // Shows one page at a time, filling the pane. With several pages a pager at
 // the bottom switches between them (also with ←/→ while it has focus).
@@ -13,7 +13,7 @@ const index = computed(() => (page.value ? props.pages.indexOf(page.value) : -1)
 
 function go(delta: number) {
     const next = props.pages[index.value + delta]
-    if (next) emit('select', next.label)
+    if (next) emit("select", next.label)
 }
 
 // an image that failed before hydration never fires @error on the client

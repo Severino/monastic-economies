@@ -77,7 +77,7 @@ UI language: **English**.
 - Formatting is enforced with Prettier (`.prettierrc.json`, `.editorconfig`):
   run `npm run format` before committing; `npm run format:check` must pass.
 - TypeScript everywhere; shared types live in `shared/types` and are used by both the build script and the app.
-- No semicolons, single quotes (Prettier config).
+- No semicolons, double quotes (Prettier config).
 
 ## Workflow
 

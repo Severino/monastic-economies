@@ -1,20 +1,20 @@
 // Which highlight categories are shown in the transcript. Persisted per browser.
 export const LEGEND = [
-    { key: 'person', label: 'Persons' },
-    { key: 'place', label: 'Places' },
-    { key: 'org', label: 'Organisations' },
-    { key: 'action', label: 'Actions' },
+    { key: "person", label: "Persons" },
+    { key: "place", label: "Places" },
+    { key: "org", label: "Organisations" },
+    { key: "action", label: "Actions" },
 ] as const
-export type LegendKey = (typeof LEGEND)[number]['key']
+export type LegendKey = (typeof LEGEND)[number]["key"]
 
-const STORAGE_KEY = 'monastic-economies:legend'
+const STORAGE_KEY = "monastic-economies:legend"
 
 export function useLegend() {
-    const hidden = useState<LegendKey[]>('legend-hidden', () => [])
+    const hidden = useState<LegendKey[]>("legend-hidden", () => [])
     // read after hydration, so server and client render the same markup first
     onMounted(() => {
         try {
-            const v = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
+            const v = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]")
             if (Array.isArray(v)) hidden.value = v.filter((k) => LEGEND.some((l) => l.key === k))
         } catch {
             /* storage unavailable: keep defaults */

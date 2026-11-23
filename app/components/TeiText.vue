@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { Charter, EntityKind } from '#shared/types'
-import { TEI_CONTEXT } from './TeiNodes'
+import type { Charter, EntityKind } from "#shared/types"
+import { TEI_CONTEXT } from "./TeiNodes"
 
 const props = defineProps<{ charter: Charter; lines?: boolean }>()
 

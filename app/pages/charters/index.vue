@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import MiniSearch from 'minisearch'
-import { SEARCH_OPTIONS } from '#shared/search'
+import MiniSearch from "minisearch"
+import { SEARCH_OPTIONS } from "#shared/search"
 
-useHead({ title: 'Charters · Monastic Economies' })
+useHead({ title: "Charters · Monastic Economies" })
 
 const route = useRoute()
 const router = useRouter()
@@ -11,38 +11,38 @@ const { data: persons } = await usePersons()
 const { data: places } = await usePlaces()
 
 // ---- filter state lives in the URL ------------------------------------------
-const q = (k: string) => (typeof route.query[k] === 'string' ? (route.query[k] as string) : '')
+const q = (k: string) => (typeof route.query[k] === "string" ? (route.query[k] as string) : "")
 // selects push a history entry (back undoes a filter); typing only replaces
 function setQuery(k: string, v: string, replace = false) {
     const to = { query: { ...route.query, [k]: v || undefined } }
     replace ? router.replace(to) : router.push(to)
 }
-const text = ref(q('q'))
+const text = ref(q("q"))
 let t: ReturnType<typeof setTimeout> | undefined
 watch(text, (v) => {
     clearTimeout(t)
-    t = setTimeout(() => setQuery('q', v.trim(), true), 250)
+    t = setTimeout(() => setQuery("q", v.trim(), true), 250)
 })
 watch(
     () => route.query.q,
     () => {
-        if (q('q') !== text.value.trim()) text.value = q('q')
+        if (q("q") !== text.value.trim()) text.value = q("q")
     },
 )
 
 // ---- full-text search (client only; index loaded lazily) ----------------------
 const search = shallowRef<MiniSearch | null>(null)
 onMounted(async () => {
-    const json = await $fetch<object>('/data/search-index.json')
+    const json = await $fetch<object>("/data/search-index.json")
     search.value = MiniSearch.loadJS(json as any, SEARCH_OPTIONS)
 })
 
 const results = computed(() => {
     let list = catalog.value ?? []
-    const person = q('person'),
-        place = q('place'),
-        action = q('action'),
-        query = q('q')
+    const person = q("person"),
+        place = q("place"),
+        action = q("action"),
+        query = q("q")
     if (person) list = list.filter((e) => e.persons.includes(person))
     if (place) list = list.filter((e) => e.places.includes(place))
     if (action) list = list.filter((e) => e.actionTypes.includes(action))
@@ -67,7 +67,7 @@ const options = computed(() => {
         actions: uniq(c.flatMap((e) => e.actionTypes)).sort(),
     }
 })
-const active = computed(() => ['q', 'person', 'place', 'action'].some((k) => q(k)))
+const active = computed(() => ["q", "person", "place", "action"].some((k) => q(k)))
 </script>
 
 <template>

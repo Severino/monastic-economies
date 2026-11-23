@@ -14,8 +14,8 @@ const replaceQuery = (q: Record<string, string | undefined>) => router.replace({
 
 // ---- line breaks (URL: ?view=running) ------------------------------------------
 const lines = computed({
-    get: () => route.query.view !== 'running',
-    set: (v) => replaceQuery({ view: v ? undefined : 'running' }),
+    get: () => route.query.view !== "running",
+    set: (v) => replaceQuery({ view: v ? undefined : "running" }),
 })
 
 // ---- facsimile page (URL: ?page=3r), synced with the transcript scroll ---------
@@ -32,10 +32,10 @@ function selectPage(label: string) {
     currentPage.value = label
     const pb = transcript.value?.querySelector<HTMLElement>(`.tei-pb[data-page="${CSS.escape(label)}"]`)
     const first = charter.value?.pages[0]?.label === label
-    if (pb && !first) pb.scrollIntoView({ block: 'start' })
+    if (pb && !first) pb.scrollIntoView({ block: "start" })
     else if (first) {
         transcript.value?.scrollTo({ top: 0 })
-        if (window.matchMedia('(max-width: 899px)').matches) window.scrollTo({ top: 0 })
+        if (window.matchMedia("(max-width: 899px)").matches) window.scrollTo({ top: 0 })
     }
 }
 
@@ -50,7 +50,7 @@ function syncPage() {
         const headBottom = head.value?.getBoundingClientRect().bottom ?? 0
         const line = headBottom + (window.innerHeight - headBottom) * 0.35
         let label = pages[0]!.label
-        for (const pb of pane.querySelectorAll<HTMLElement>('.tei-pb[data-page]')) {
+        for (const pb of pane.querySelectorAll<HTMLElement>(".tei-pb[data-page]")) {
             if (pb.getBoundingClientRect().top > line) break
             if (known.has(pb.dataset.page!)) label = pb.dataset.page!
         }
@@ -64,19 +64,19 @@ const hoverTypes = ref<string[]>([])
 const current = ref<{ type?: string; el: HTMLElement; index: number } | null>(null)
 let hoverEl: HTMLElement | null = null
 
-const typesOf = (el: HTMLElement) => (el.dataset.types ?? '').split(/\s+/).filter(Boolean)
+const typesOf = (el: HTMLElement) => (el.dataset.types ?? "").split(/\s+/).filter(Boolean)
 const badgeLit = (t: string) =>
     hoverTypes.value.includes(t) ||
     current.value?.type === t ||
     (!current.value?.type && current.value && typesOf(current.value.el).includes(t))
 
-const actionEls = () => [...(transcript.value?.querySelectorAll<HTMLElement>('.tei-action') ?? [])]
+const actionEls = () => [...(transcript.value?.querySelectorAll<HTMLElement>(".tei-action") ?? [])]
 const storageKey = () => `monastic-economies:selected-action:${props.id}`
 
 function setCurrent(next: typeof current.value) {
-    current.value?.el.classList.remove('is-current')
+    current.value?.el.classList.remove("is-current")
     current.value = next
-    next?.el.classList.add('is-current')
+    next?.el.classList.add("is-current")
     // remember the selection per charter (position among all action passages)
     try {
         if (next)
@@ -92,11 +92,11 @@ function setCurrent(next: typeof current.value) {
 
 function restoreSelection() {
     try {
-        const saved = JSON.parse(localStorage.getItem(storageKey()) ?? 'null')
+        const saved = JSON.parse(localStorage.getItem(storageKey()) ?? "null")
         const el = saved && actionEls()[saved.pos]
         if (el) {
             current.value = { type: saved.type ?? undefined, el, index: saved.index ?? -1 }
-            el.classList.add('is-current')
+            el.classList.add("is-current")
         }
     } catch {
         /* ignore */
@@ -110,34 +110,34 @@ function nextOccurrence(t: string) {
     const index = current.value?.type === t ? (current.value.index + 1) % all.length : 0
     const el = all[index]!
     setCurrent({ type: t, el, index })
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el.scrollIntoView({ block: "center", behavior: "smooth" })
 }
 
 function onTextOver(e: MouseEvent) {
-    const el = (e.target as HTMLElement).closest<HTMLElement>('.tei-action')
+    const el = (e.target as HTMLElement).closest<HTMLElement>(".tei-action")
     if (el === hoverEl) return
-    hoverEl?.classList.remove('is-hover')
+    hoverEl?.classList.remove("is-hover")
     hoverEl = el
-    el?.classList.add('is-hover')
+    el?.classList.add("is-hover")
     hoverTypes.value = el ? typesOf(el) : []
 }
 function onTextLeave() {
-    hoverEl?.classList.remove('is-hover')
+    hoverEl?.classList.remove("is-hover")
     hoverEl = null
     hoverTypes.value = []
 }
 function onTextClick(e: MouseEvent) {
     const target = e.target as HTMLElement
-    const pb = target.closest<HTMLElement>('.tei-pb[data-page]')
+    const pb = target.closest<HTMLElement>(".tei-pb[data-page]")
     if (pb) return selectPage(pb.dataset.page!)
-    if (target.closest('a')) return
+    if (target.closest("a")) return
     // tap on an action (mobile): pin it, tap again elsewhere to clear
-    const el = target.closest<HTMLElement>('.tei-action')
+    const el = target.closest<HTMLElement>(".tei-action")
     setCurrent(el && el !== current.value?.el ? { el, index: -1 } : null)
 }
 function onTextKey(e: KeyboardEvent) {
-    const pb = (e.target as HTMLElement).closest<HTMLElement>('.tei-pb[data-page]')
-    if (pb && (e.key === 'Enter' || e.key === ' ')) {
+    const pb = (e.target as HTMLElement).closest<HTMLElement>(".tei-pb[data-page]")
+    if (pb && (e.key === "Enter" || e.key === " ")) {
         e.preventDefault()
         selectPage(pb.dataset.page!)
     }
@@ -147,10 +147,10 @@ function onDocClick(e: MouseEvent) {
     const t = e.target as HTMLElement
     if (
         current.value &&
-        !t.closest('.action-badge') &&
-        !t.closest('.tei-text') &&
-        !t.closest('.charter-head') &&
-        !t.closest('.glossary')
+        !t.closest(".action-badge") &&
+        !t.closest(".tei-text") &&
+        !t.closest(".charter-head") &&
+        !t.closest(".glossary")
     )
         setCurrent(null)
 }
@@ -158,27 +158,27 @@ function onDocClick(e: MouseEvent) {
 /** CSS for "highlight all spans of the hovered badge type" (data-types is a token list). */
 const hoverCss = computed(() =>
     hoverTypes.value.length && !hoverEl
-        ? hoverTypes.value.map((t) => `.tei-action[data-types~="${CSS.escape(t)}"]`).join(',') +
-          '{background:var(--hl)}'
-        : '',
+        ? hoverTypes.value.map((t) => `.tei-action[data-types~="${CSS.escape(t)}"]`).join(",") +
+          "{background:var(--hl)}"
+        : "",
 )
 
 onMounted(() => {
-    transcript.value?.addEventListener('scroll', syncPage, { passive: true })
-    window.addEventListener('scroll', syncPage, { passive: true })
-    document.addEventListener('click', onDocClick)
+    transcript.value?.addEventListener("scroll", syncPage, { passive: true })
+    window.addEventListener("scroll", syncPage, { passive: true })
+    document.addEventListener("click", onDocClick)
     syncPage()
     restoreSelection()
 })
 onBeforeUnmount(() => {
-    transcript.value?.removeEventListener('scroll', syncPage)
-    window.removeEventListener('scroll', syncPage)
-    document.removeEventListener('click', onDocClick)
+    transcript.value?.removeEventListener("scroll", syncPage)
+    window.removeEventListener("scroll", syncPage)
+    document.removeEventListener("click", onDocClick)
 })
 watch(
     () => props.id,
     () => {
-        current.value?.el.classList.remove('is-current')
+        current.value?.el.classList.remove("is-current")
         current.value = null
         nextTick(restoreSelection)
     },
@@ -199,7 +199,7 @@ const entities = computed(() => {
         }
         return [...m].map(([id, roles]) => ({ id, roles: [...roles] }))
     }
-    return { persons: group('person'), places: group('place'), orgs: group('org') }
+    return { persons: group("person"), places: group("place"), orgs: group("org") }
 })
 </script>
 
@@ -233,7 +233,7 @@ const entities = computed(() => {
                         <ul>
                             <li v-for="p in entities.persons" :key="p.id">
                                 <NuxtLink :to="`/persons/${p.id}`">{{ persons?.[p.id]?.name ?? p.id }}</NuxtLink>
-                                <span v-if="p.roles.length" class="muted"> · {{ p.roles.map(label).join(', ') }}</span>
+                                <span v-if="p.roles.length" class="muted"> · {{ p.roles.map(label).join(", ") }}</span>
                             </li>
                         </ul>
                     </div>
@@ -242,7 +242,7 @@ const entities = computed(() => {
                         <ul>
                             <li v-for="p in entities.places" :key="p.id">
                                 <NuxtLink :to="`/places/${p.id}`">{{ placeName(places?.[p.id]) }}</NuxtLink>
-                                <span v-if="p.roles.length" class="muted"> · {{ p.roles.map(label).join(', ') }}</span>
+                                <span v-if="p.roles.length" class="muted"> · {{ p.roles.map(label).join(", ") }}</span>
                             </li>
                         </ul>
                     </div>
@@ -251,7 +251,7 @@ const entities = computed(() => {
                         <ul>
                             <li v-for="o in entities.orgs" :key="o.id">
                                 {{ orgName(orgs?.[o.id]) }}
-                                <span v-if="o.roles.length" class="muted"> · {{ o.roles.map(label).join(', ') }}</span>
+                                <span v-if="o.roles.length" class="muted"> · {{ o.roles.map(label).join(", ") }}</span>
                             </li>
                         </ul>
                     </div>
@@ -265,7 +265,7 @@ const entities = computed(() => {
                     <p class="eyebrow">{{ charter.collection }} · {{ charter.bookId }} · no. {{ charter.number }}</p>
                     <div class="meta-pills">
                         <span class="pill" title="Date">
-                            <time :datetime="charter.date.when">{{ formatDate(charter.date) || 'undated' }}</time>
+                            <time :datetime="charter.date.when">{{ formatDate(charter.date) || "undated" }}</time>
                         </span>
                         <span v-if="charter.locus.from" class="pill" title="Folios">
                             fol. {{ charter.locus.from

@@ -13,8 +13,8 @@
     --hl: #ffe98a;
     --hl-strong: #ffd84a;
     --red: #b3261e;
-    --font-text: Georgia, 'Times New Roman', serif;
-    --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-text: Georgia, "Times New Roman", serif;
+    --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
     --header-h: 3.5rem;
 }
 @media (prefers-color-scheme: dark) {
@@ -551,7 +551,7 @@ h2 {
 .tei-unresolved {
     color: inherit;
 }
-.tei-entity[data-role='issuer'] {
+.tei-entity[data-role="issuer"] {
     font-weight: 600;
 }
 a.tei-entity:hover {
@@ -617,10 +617,10 @@ a.tei-entity:hover {
     align-items: center;
     margin-bottom: 0.5rem;
 }
-.filters input[type='search'] {
+.filters input[type="search"] {
     flex: 1 1 16rem;
 }
-input[type='search'],
+input[type="search"],
 select {
     font: inherit;
     padding: 0.45rem 0.6rem;

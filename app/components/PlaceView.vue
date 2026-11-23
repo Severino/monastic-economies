@@ -12,7 +12,7 @@ const entries = computed(() => (catalog.value ?? []).filter((e) => roles.value[e
     <div v-if="!place" class="notice">Place “{{ id }}” not found.</div>
     <article v-else class="container">
         <p class="eyebrow">
-            Place<template v-if="place.types.length"> · {{ place.types.join(', ') }}</template>
+            Place<template v-if="place.types.length"> · {{ place.types.join(", ") }}</template>
         </p>
         <h1>{{ placeName(place) }}</h1>
         <p v-if="place.names.length > 1" class="muted">
@@ -20,8 +20,8 @@ const entries = computed(() => (catalog.value ?? []).filter((e) => roles.value[e
             {{
                 place.names
                     .slice(1)
-                    .map((n) => n.name + (n.lang ? ` (${n.lang})` : ''))
-                    .join(', ')
+                    .map((n) => n.name + (n.lang ? ` (${n.lang})` : ""))
+                    .join(", ")
             }}
         </p>
         <p v-if="place.coords" class="muted">

@@ -84,7 +84,7 @@ interface PageRef {
 
 interface Mention {
   ref: Id
-  kind: 'person' | 'place' | 'org' | 'unresolved'
+  kind: "person" | "place" | "org" | "unresolved"
   role?: string
   section?: string
 }
@@ -99,24 +99,24 @@ type Node =
   | string
   | {
       t:
-        | 'div'
-        | 'ab'
-        | 'head'
-        | 'rs'
-        | 'lb'
-        | 'pb'
-        | 'cb'
-        | 'date'
-        | 'hi'
-        | 'ref'
-        | 'add'
-        | 'del'
-        | 'subst'
-        | 'supplied'
-        | 'sic'
-        | 'metamark'
-        | 'choice'
-        | 'seg'
+        | "div"
+        | "ab"
+        | "head"
+        | "rs"
+        | "lb"
+        | "pb"
+        | "cb"
+        | "date"
+        | "hi"
+        | "ref"
+        | "add"
+        | "del"
+        | "subst"
+        | "supplied"
+        | "sic"
+        | "metamark"
+        | "choice"
+        | "seg"
       a?: Record<string, string> // type, role, ref (normalisiert ohne '#'), n, break, rend …
       c?: Node[]
     }
@@ -145,7 +145,7 @@ interface Place {
 
 interface Relation {
   name: string
-  category?: 'family' | 'social'
+  category?: "family" | "social"
   active?: Id[]
   passive?: Id[]
   mutual?: Id[]

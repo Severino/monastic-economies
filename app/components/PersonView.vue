@@ -11,7 +11,7 @@ const entries = computed(() => (catalog.value ?? []).filter((e) => roles.value[e
 const route = useRoute()
 const router = useRouter()
 const preview = computed(() => (route.query.preview as string) || entries.value[0]?.id)
-const sexIcon: Record<string, string> = { m: '♂', male: '♂', f: '♀', female: '♀' }
+const sexIcon: Record<string, string> = { m: "♂", male: "♂", f: "♀", female: "♀" }
 </script>
 
 <template>
@@ -20,11 +20,11 @@ const sexIcon: Record<string, string> = { m: '♂', male: '♂', f: '♀', femal
         <section class="pane">
             <p class="eyebrow">Person</p>
             <h1>
-                <span v-if="person.sex" class="sex" :title="person.sex">{{ sexIcon[person.sex] ?? '' }}</span>
+                <span v-if="person.sex" class="sex" :title="person.sex">{{ sexIcon[person.sex] ?? "" }}</span>
                 {{ person.name }}
                 <span v-if="person.roleName" class="muted">{{ person.roleName }}</span>
             </h1>
-            <p v-if="person.altNames.length" class="muted">also: {{ person.altNames.join(', ') }}</p>
+            <p v-if="person.altNames.length" class="muted">also: {{ person.altNames.join(", ") }}</p>
             <ul v-if="person.affiliations.length">
                 <li v-for="(a, i) in person.affiliations" :key="i">{{ a.type }}: {{ a.label }}</li>
             </ul>
@@ -43,7 +43,7 @@ const sexIcon: Record<string, string> = { m: '♂', male: '♂', f: '♀', femal
                         <span class="date">{{ formatDate(e.date) }}</span>
                         <span class="title">{{ e.title }}</span>
                         <span class="muted small"
-                            >as {{ roles[e.id]?.length ? roles[e.id]!.map(label).join(', ') : 'mentioned' }}</span
+                            >as {{ roles[e.id]?.length ? roles[e.id]!.map(label).join(", ") : "mentioned" }}</span
                         >
                     </a>
                 </li>

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-useHead({ title: 'Persons · Monastic Economies' })
+useHead({ title: "Persons · Monastic Economies" })
 const { data: persons } = await usePersons()
 const route = useRoute()
 const router = useRouter()
 const filter = computed({
-    get: () => (route.query.q as string) ?? '',
+    get: () => (route.query.q as string) ?? "",
     set: (v) => router.replace({ query: { q: v || undefined } }),
 })
 const list = computed(() =>
@@ -23,7 +23,7 @@ const list = computed(() =>
             <li v-for="p in list" :key="p.id">
                 <NuxtLink :to="`/persons/${p.id}`">{{ p.name }}</NuxtLink>
                 <span class="muted small">
-                    · {{ p.charters.length }} charter{{ p.charters.length === 1 ? '' : 's' }}</span
+                    · {{ p.charters.length }} charter{{ p.charters.length === 1 ? "" : "s" }}</span
                 >
             </li>
         </ul>

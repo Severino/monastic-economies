@@ -26,7 +26,7 @@ export interface PageRef {
     iiif?: string
 }
 
-export type EntityKind = 'person' | 'place' | 'org' | 'unresolved'
+export type EntityKind = "person" | "place" | "org" | "unresolved"
 
 export interface Mention {
     ref: Id
@@ -128,7 +128,7 @@ export interface Book {
 }
 
 export interface BuildIssue {
-    level: 'error' | 'warning'
+    level: "error" | "warning"
     file: string
     message: string
 }
