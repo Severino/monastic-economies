@@ -6,13 +6,13 @@ const props = defineProps<{
     entries: CatalogEntry[]
     roles?: Record<string, string[]>
     /** matches of the current search, highlighted in title, issuers and snippet */
-    highlight?: RegExp | null
+    highlight?: string[]
     snippets?: Record<string, { parts: TextPart[]; count: number } | null>
 }>()
 const { data: persons } = await usePersons()
 
 const issuers = (e: CatalogEntry) => e.issuers.map((i) => persons.value?.[i]?.name ?? i).join(", ")
-const mark = (s: string): TextPart[] => (props.highlight ? markParts(s, props.highlight) : [{ text: s, hit: false }])
+const mark = (s: string): TextPart[] => markParts(s, props.highlight ?? [])
 </script>
 
 <template>

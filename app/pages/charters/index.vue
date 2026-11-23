@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import MiniSearch from "minisearch"
-import { SEARCH_OPTIONS, highlightRegex, snippet } from "#shared/search"
+import { queryTerms, searchDocs, snippet, type SearchDoc } from "#shared/search"
 
 useHead({ title: "Charters · Monastic Economies" })
 
@@ -30,17 +29,12 @@ watch(
     },
 )
 
-// ---- full-text search (client only; index loaded lazily) ----------------------
-const search = shallowRef<MiniSearch | null>(null)
-const texts = shallowRef<Record<string, string>>({})
+// ---- text search (client only; data loaded lazily) ---------------------------
+const docs = shallowRef<SearchDoc[] | null>(null)
 onMounted(async () => {
-    const [json, t] = await Promise.all([
-        $fetch<object>("/data/search-index.json"),
-        $fetch<Record<string, string>>("/data/texts.json"),
-    ])
-    search.value = MiniSearch.loadJS(json as any, SEARCH_OPTIONS)
-    texts.value = t
+    docs.value = await $fetch<SearchDoc[]>("/data/search.json")
 })
+const texts = computed(() => Object.fromEntries((docs.value ?? []).map((d) => [d.id, d.text])))
 
 const results = computed(() => {
     let list = catalog.value ?? []
@@ -51,8 +45,8 @@ const results = computed(() => {
     if (person) list = list.filter((e) => e.persons.includes(person))
     if (place) list = list.filter((e) => e.places.includes(place))
     if (action) list = list.filter((e) => e.actionTypes.includes(action))
-    if (query && search.value) {
-        const hits = new Map(search.value.search(query).map((h) => [h.id as string, h.score]))
+    if (query && docs.value) {
+        const hits = searchDocs(docs.value, query)
         list = list.filter((e) => hits.has(e.id)).sort((a, b) => hits.get(b.id)! - hits.get(a.id)!)
     }
     return list
@@ -72,12 +66,12 @@ const options = computed(() => {
         actions: uniq(c.flatMap((e) => e.actionTypes)).sort(),
     }
 })
-// highlighting: same word-prefix rule as the search
-const highlight = computed(() => (search.value ? highlightRegex(q("q")) : null))
+// highlighting: same matching rule as the search
+const highlight = computed(() => (docs.value ? queryTerms(q("q")) : []))
 const snippets = computed(() => {
-    const re = highlight.value
-    if (!re) return {}
-    return Object.fromEntries(results.value.map((e) => [e.id, snippet(texts.value[e.id] ?? "", re)]))
+    const terms = highlight.value
+    if (!terms.length) return {}
+    return Object.fromEntries(results.value.map((e) => [e.id, snippet(texts.value[e.id] ?? "", terms)]))
 })
 const active = computed(() => ["q", "person", "place", "action"].some((k) => q(k)))
 </script>

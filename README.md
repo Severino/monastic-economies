@@ -10,7 +10,7 @@ index_ until the real index file (`fulda-indices.xml`) is available.
 
 - **Build step** (`scripts/build-data`, TypeScript + `@xmldom/xmldom`): TEI XML → JSON in `public/data`
 - **Nuxt 4**, fully prerendered with `nuxt generate`, deployable to any static host (Apache config in `public/.htaccess`)
-- **MiniSearch** (full text), planned: **MapLibre** (map), **sigma.js** (person network)
+- Text search: plain substring scan (`shared/search.ts`), planned: **MapLibre** (map), **sigma.js** (person network)
 
 ## Getting started
 
@@ -59,7 +59,7 @@ Schema files are in `schema/`.
 | `relations.json`                           | explicit relations + co-occurrence edges        |
 | `books.json`                               | books (derived from `msDesc/msIdentifier/idno`) |
 | `places.geojson`                           | places with coordinates                         |
-| `search-index.json`                        | serialized MiniSearch index                     |
+| `search.json`                              | title, text and names per charter, for search   |
 
 The build reports data problems in `./build-report.json` (git-ignored, not deployed;
 the full path is printed at the end of the build) and only fails on XML that cannot be parsed.

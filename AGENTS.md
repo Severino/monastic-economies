@@ -15,10 +15,9 @@ UI language: **English**.
   the output (`.output/public`) is served by **Apache** (`public/.htaccess`).
 - **Build-time XML processing in TypeScript** (`scripts/build-data`, `@xmldom/xmldom`).
   No SaxonJS/XSLT. TEI → JSON in `public/data`, then Nuxt renders from that JSON.
-- **Nuxt 4 / Vue 3.** Icons: **Lucide** (`lucide-vue-next`, slim strokes: `.lucide { stroke-width: 1.5 }`; no other icon sets, no inline SVG icons). Search: **MiniSearch**. Map: **MapLibre** (planned). Person network: **sigma.js** (planned).
+- **Nuxt 4 / Vue 3.** Icons: **Lucide** (`lucide-vue-next`, slim strokes: `.lucide { stroke-width: 1.5 }`; no other icon sets, no inline SVG icons). Search: plain substring scan in `shared/search.ts` (no search library; see Search). Map: **MapLibre** (planned). Person network: **sigma.js** (planned).
 - During prerendering, data is read through `server/api/data/[...path]` (Nitro server assets);
-  in the browser, pages use the prerendered payloads. Only the search index (`search-index.json`) and the plain
-  charter texts for result snippets (`texts.json`) are fetched from `/data/`.
+  in the browser, pages use the prerendered payloads. Only the search data (`search.json`) is fetched from `/data/`.
 
 ## Data
 
@@ -58,8 +57,9 @@ UI language: **English**.
 
 ## Search
 
-- Charter search (MiniSearch, `shared/search.ts`): every word must match (AND) as a word prefix, no fuzzy matching.
-  Highlighting uses the same rule (`highlightRegex`), so what is marked is what matched.
+- Charter search (`shared/search.ts`): every word must occur (AND) **anywhere inside a word** ("33" finds "033"),
+  ignoring case and diacritics; no fuzzy matching. Chosen over word-prefix search (MiniSearch) because it is what
+  people expect. Highlighting uses the same rule, so what is marked is what matched.
 - Results show title and issuer on one line (no "Issuer:" label), a text snippet around the first match
   with `<mark>` and the number of matches. Action types in lists are subdued (muted colour with alpha).
 - The persons list is grouped by first letter (diacritics folded), with a letter jump bar; a Lucide icon before

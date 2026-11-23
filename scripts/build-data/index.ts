@@ -13,12 +13,11 @@
  */
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from "node:fs"
 import { basename, dirname, join, relative, resolve } from "node:path"
-import MiniSearch from "minisearch"
 import type { Book, BuildIssue, CatalogEntry, Charter, CharterLink, EntityKind } from "../../shared/types"
 import { parseCharter } from "./charter"
 import { emptyIndices, readIndices } from "./indices"
 import { attr, descendants, parseXml, type El } from "./tei"
-import { SEARCH_OPTIONS } from "../../shared/search"
+import type { SearchDoc } from "../../shared/search"
 import { ROOT, dataDir } from "../data-dir"
 
 const DATA = dataDir()
@@ -249,22 +248,19 @@ const geojson = {
 
 const personName = (id: string) => idx.persons.get(id)?.name ?? ""
 const placeName = (id: string) => idx.places.get(id)?.names[0]?.name ?? ""
-const search = new MiniSearch(SEARCH_OPTIONS)
-search.addAll(
-    charters.map((c) => ({
-        id: c.id,
-        title: c.title,
-        text: c.plainText,
-        persons: catalog
-            .find((e) => e.id === c.id)!
-            .persons.map(personName)
-            .join(" "),
-        places: catalog
-            .find((e) => e.id === c.id)!
-            .places.map(placeName)
-            .join(" "),
-    })),
-)
+const search: SearchDoc[] = charters.map((c) => ({
+    id: c.id,
+    title: c.title,
+    text: c.plainText,
+    persons: catalog
+        .find((e) => e.id === c.id)!
+        .persons.map(personName)
+        .join(" "),
+    places: catalog
+        .find((e) => e.id === c.id)!
+        .places.map(placeName)
+        .join(" "),
+}))
 
 // ---- 5. write -------------------------------------------------------------------
 rmSync(OUT, { recursive: true, force: true })
@@ -279,9 +275,8 @@ write("orgs.json", [...idx.orgs.values()])
 write("relations.json", { explicit: idx.relations, cooccurrence: [...cooc.values()] })
 write("books.json", [...books.values()])
 write("places.geojson", geojson)
-write("search-index.json", search.toJSON())
-// reading text per charter, for match excerpts in the catalog (loaded lazily)
-write("texts.json", Object.fromEntries(charters.map((c) => [c.id, c.plainText])))
+// title, reading text and entity names per charter, for the catalog search (loaded lazily)
+write("search.json", search)
 // kept outside public/ so it is not deployed with the site
 const REPORT = join(ROOT, "build-report.json")
 writeFileSync(REPORT, JSON.stringify(issues, null, 2))

@@ -1,7 +1,7 @@
 # Datenmodell v0.1 (Entwurf)
 
 Stand: 2026-11-23. Grundlage: 3 pseudonymisierte Fulda-Urkunden (001–003), `fnf-main.xsd`, `fnf-restrictions.xsd`.
-Stack: Nuxt (`nuxt generate`), TypeScript-Build-Skript (Variante B), MiniSearch, MapLibre, sigma.js, Apache.
+Stack: Nuxt (`nuxt generate`), TypeScript-Build-Skript (Variante B), Textsuche per Teilstring-Suche (ursprünglich MiniSearch), MapLibre, sigma.js, Apache.
 
 ## 1. Befunde aus den Beispieldaten
 
@@ -39,7 +39,7 @@ Stack: Nuxt (`nuxt generate`), TypeScript-Build-Skript (Variante B), MiniSearch,
 | `relations.json`                           | explizite Relationen + abgeleitete Ko-Okkurrenz | Graph                         |
 | `books.json`                               | Bücher + geordnete Urkunden-IDs                 | Buchseite (später)            |
 | `places.geojson`                           | Orte mit Koordinaten                            | Karte                         |
-| `search-index.json`                        | serialisierter MiniSearch-Index                 | Suche                         |
+| `search.json`                              | Titel, Text und Namen je Urkunde                | Suche                         |
 | `build-report.json`                        | Validierungs- und Datenfehler                   | Entwickler / Wissenschaftler  |
 
 Bei 100+ Urkunden bleibt alles im niedrigen MB-Bereich. `nuxt generate` legt die Daten zusätzlich als Payload in die vorgerenderten Seiten.
