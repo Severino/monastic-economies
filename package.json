@@ -11,7 +11,9 @@
     "generate": "npm run data && nuxt generate",
     "generate:sample": "npm run data:sample && nuxt generate",
     "preview": "npx serve .output/public",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "minisearch": "^7.2.0",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@xmldom/xmldom": "^0.9.12",
+    "prettier": "3.10.1",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }

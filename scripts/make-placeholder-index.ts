@@ -14,34 +14,38 @@ const XML_DIR = join(DATA, 'xml')
 
 // approximate coordinates of a few real places, to have something on the map
 const KNOWN: Record<string, [lat: number, lon: number, type: string]> = {
-  strasbourg: [48.5734, 7.7521, 'city'],
-  paderborn: [51.7189, 8.7575, 'palace'],
-  alsace: [48.3, 7.45, 'region'],
-  grabfeld: [50.35, 10.4, 'region'],
-  ostheim: [48.159, 7.369, 'villa'],
-  kientzheim: [48.137, 7.288, 'villa'],
-  ingersheim: [48.097, 7.307, 'villa'],
-  sigolsheim: [48.135, 7.3, 'villa'],
-  fuldaRiver: [50.55, 9.68, 'topographic'],
+    strasbourg: [48.5734, 7.7521, 'city'],
+    paderborn: [51.7189, 8.7575, 'palace'],
+    alsace: [48.3, 7.45, 'region'],
+    grabfeld: [50.35, 10.4, 'region'],
+    ostheim: [48.159, 7.369, 'villa'],
+    kientzheim: [48.137, 7.288, 'villa'],
+    ingersheim: [48.097, 7.307, 'villa'],
+    sigolsheim: [48.135, 7.3, 'villa'],
+    fuldaRiver: [50.55, 9.68, 'topographic'],
 }
 
 const refs = new Set<string>()
 for (const col of readdirSync(XML_DIR, { withFileTypes: true }).filter((d) => d.isDirectory())) {
-  for (const f of readdirSync(join(XML_DIR, col.name)).filter((f) => f.endsWith('.xml'))) {
-    const xml = readFileSync(join(XML_DIR, col.name, f), 'utf8')
-    for (const m of xml.matchAll(/<rs\b[^>]*\bref="([^"]+)"/g))
-      m[1].split(/\s+/).forEach((r) => refs.add(r.replace(/^#/, '')))
-  }
+    for (const f of readdirSync(join(XML_DIR, col.name)).filter((f) => f.endsWith('.xml'))) {
+        const xml = readFileSync(join(XML_DIR, col.name, f), 'utf8')
+        for (const m of xml.matchAll(/<rs\b[^>]*\bref="([^"]+)"/g))
+            m[1].split(/\s+/).forEach((r) => refs.add(r.replace(/^#/, '')))
+    }
 }
 
-const label = (id: string) => id.replace(/\d+$/, '').replace(/Org$/, '').replace(/^./, (c) => c.toUpperCase())
+const label = (id: string) =>
+    id
+        .replace(/\d+$/, '')
+        .replace(/Org$/, '')
+        .replace(/^./, (c) => c.toUpperCase())
 const persons: string[] = []
 const places: string[] = []
 const orgs: string[] = []
 for (const id of [...refs].sort()) {
-  if (/\d$/.test(id)) persons.push(id)
-  else if (/Org$/.test(id)) orgs.push(id)
-  else places.push(id)
+    if (/\d$/.test(id)) persons.push(id)
+    else if (/Org$/.test(id)) orgs.push(id)
+    else places.push(id)
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -58,12 +62,12 @@ ${persons.map((id) => `    <person xml:id="${id}"><persName><name>${esc(label(id
   </listRelation>
   <listPlace>
 ${places
-  .map((id) => {
-    const k = KNOWN[id]
-    const loc = k ? `<location><geo decls="WGS84/y-x">${k[0]}, ${k[1]}</geo></location>` : ''
-    return `    <place xml:id="${id}" type="${k?.[2] ?? 'unknown'}"><placeName>${esc(label(id))}</placeName>${loc}</place>`
-  })
-  .join('\n')}
+    .map((id) => {
+        const k = KNOWN[id]
+        const loc = k ? `<location><geo decls="WGS84/y-x">${k[0]}, ${k[1]}</geo></location>` : ''
+        return `    <place xml:id="${id}" type="${k?.[2] ?? 'unknown'}"><placeName>${esc(label(id))}</placeName>${loc}</place>`
+    })
+    .join('\n')}
   </listPlace>
   <listOrg>
 ${orgs.map((id) => `    <org xml:id="${id}" type="monastery"><orgName>${esc(label(id))}</orgName></org>`).join('\n')}

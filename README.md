@@ -3,8 +3,8 @@
 Static website for the Fulda and Farfa charters: facsimiles, transcriptions,
 persons, places and legal actions, built from the project's TEI XML.
 
-**Status: prototype.** Uses pseudonymized sample data and a *generated placeholder
-index* until the real index file (`fulda-indices.xml`) is available.
+**Status: prototype.** Uses pseudonymized sample data and a _generated placeholder
+index_ until the real index file (`fulda-indices.xml`) is available.
 
 ## Stack
 
@@ -27,10 +27,10 @@ npm run preview           # serves .output/public
 
 Two data folders with the same layout:
 
-| folder | content | in git |
-|---|---|---|
-| `data/` | the real working data | **no** (ignored) |
-| `fixtures/` | small pseudonymized sample set for development, tests and CI | yes |
+| folder      | content                                                      | in git           |
+| ----------- | ------------------------------------------------------------ | ---------------- |
+| `data/`     | the real working data                                        | **no** (ignored) |
+| `fixtures/` | small pseudonymized sample set for development, tests and CI | yes              |
 
 ```
 <folder>/xml/<collection>/*.xml   charters; the folder name is the collection ("fulda", "farfa")
@@ -51,15 +51,15 @@ Schema files are in `schema/`.
 
 `npm run data` writes to `public/data/`:
 
-| file | content |
-|---|---|
-| `charters/{collection}-{file}.json` | full charter incl. transcript tree |
-| `catalog.json` | light list for filtering |
-| `persons.json`, `places.json`, `orgs.json` | entities with back references to charters |
-| `relations.json` | explicit relations + co-occurrence edges |
-| `books.json` | books (derived from `msDesc/msIdentifier/idno`) |
-| `places.geojson` | places with coordinates |
-| `search-index.json` | serialized MiniSearch index |
+| file                                       | content                                         |
+| ------------------------------------------ | ----------------------------------------------- |
+| `charters/{collection}-{file}.json`        | full charter incl. transcript tree              |
+| `catalog.json`                             | light list for filtering                        |
+| `persons.json`, `places.json`, `orgs.json` | entities with back references to charters       |
+| `relations.json`                           | explicit relations + co-occurrence edges        |
+| `books.json`                               | books (derived from `msDesc/msIdentifier/idno`) |
+| `places.geojson`                           | places with coordinates                         |
+| `search-index.json`                        | serialized MiniSearch index                     |
 
 The build reports data problems in `./build-report.json` (git-ignored, not deployed;
 the full path is printed at the end of the build) and only fails on XML that cannot be parsed.

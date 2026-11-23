@@ -6,5 +6,5 @@ useHead({ title: () => `${placeName(places.value?.[id.value])} · Monastic Econo
 </script>
 
 <template>
-  <PlaceView :id="id" />
+    <PlaceView :id="id" />
 </template>

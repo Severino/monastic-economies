@@ -6,5 +6,5 @@ useHead({ title: () => `${persons.value?.[id.value]?.name ?? id.value} · Monast
 </script>
 
 <template>
-  <PersonView :id="id" />
+    <PersonView :id="id" />
 </template>

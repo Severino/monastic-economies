@@ -5,5 +5,5 @@ useHead({ title: () => `Charter ${id.value} · Monastic Economies` })
 </script>
 
 <template>
-  <CharterView :id="id" />
+    <CharterView :id="id" />
 </template>

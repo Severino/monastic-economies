@@ -9,19 +9,27 @@ const entries = computed(() => (catalog.value ?? []).filter((e) => roles.value[e
 </script>
 
 <template>
-  <div v-if="!place" class="notice">Place “{{ id }}” not found.</div>
-  <article v-else class="container">
-    <p class="eyebrow">Place<template v-if="place.types.length"> · {{ place.types.join(', ') }}</template></p>
-    <h1>{{ placeName(place) }}</h1>
-    <p v-if="place.names.length > 1" class="muted">
-      also: {{ place.names.slice(1).map((n) => n.name + (n.lang ? ` (${n.lang})` : '')).join(', ') }}
-    </p>
-    <p v-if="place.coords" class="muted">
-      {{ place.coords[1].toFixed(4) }}, {{ place.coords[0].toFixed(4) }}
-      <template v-if="place.cert"> · certainty: {{ place.cert }}</template>
-    </p>
-    <p v-else class="muted">No coordinates.</p>
-    <h2>Charters ({{ entries.length }})</h2>
-    <CharterList :entries="entries" :roles="roles" />
-  </article>
+    <div v-if="!place" class="notice">Place “{{ id }}” not found.</div>
+    <article v-else class="container">
+        <p class="eyebrow">
+            Place<template v-if="place.types.length"> · {{ place.types.join(', ') }}</template>
+        </p>
+        <h1>{{ placeName(place) }}</h1>
+        <p v-if="place.names.length > 1" class="muted">
+            also:
+            {{
+                place.names
+                    .slice(1)
+                    .map((n) => n.name + (n.lang ? ` (${n.lang})` : ''))
+                    .join(', ')
+            }}
+        </p>
+        <p v-if="place.coords" class="muted">
+            {{ place.coords[1].toFixed(4) }}, {{ place.coords[0].toFixed(4) }}
+            <template v-if="place.cert"> · certainty: {{ place.cert }}</template>
+        </p>
+        <p v-else class="muted">No coordinates.</p>
+        <h2>Charters ({{ entries.length }})</h2>
+        <CharterList :entries="entries" :roles="roles" />
+    </article>
 </template>
