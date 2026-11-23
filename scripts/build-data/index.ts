@@ -1,8 +1,11 @@
 /**
  * Build step: TEI XML -> JSON in public/data.
  *
- *   data/xml/<collection>/*.xml   charters (collection = folder name, e.g. "fulda")
- *   data/indices/*.xml            central index files (persons, places, orgs, relations)
+ *   <data>/xml/<collection>/*.xml   charters (collection = folder name, e.g. "fulda")
+ *   <data>/indices/*.xml            central index files (persons, places, orgs, relations)
+ *
+ * <data> is ./data (git-ignored working data) or the folder given with --data,
+ * e.g. --data fixtures for the committed sample data.
  *
  * IDs are global across charters, so all index files are merged into one set.
  * Data problems are collected in public/data/build-report.json; the build only
@@ -16,12 +19,14 @@ import { parseCharter } from './charter'
 import { emptyIndices, readIndices } from './indices'
 import { parseXml, type El } from './tei'
 import { SEARCH_OPTIONS } from '../../shared/search'
+import { ROOT, dataDir } from '../data-dir'
 
-const ROOT = join(import.meta.dirname, '..', '..')
-const XML_DIR = join(ROOT, 'data', 'xml')
-const INDEX_DIR = join(ROOT, 'data', 'indices')
+const DATA = dataDir()
+const XML_DIR = join(DATA, 'xml')
+const INDEX_DIR = join(DATA, 'indices')
 const OUT = join(ROOT, 'public', 'data')
 
+console.log(`data: ${relative(ROOT, DATA) || DATA}`)
 const issues: BuildIssue[] = []
 let fatal = false
 

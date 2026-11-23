@@ -1,15 +1,16 @@
 /**
- * Generates data/indices/placeholder-indices.xml from the references used in
- * data/xml. ONLY for development until the real index file (fulda-indices.xml)
+ * Generates <data>/indices/placeholder-indices.xml from the references used in
+ * <data>/xml (default ./data, or --data <dir>). ONLY for development until the real index file (fulda-indices.xml)
  * is available. Delete the generated file once the real index is in place.
  *
  * Heuristic: id ending in a digit -> person, ending in "Org" -> org, else place.
  */
 import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { dataDir } from './data-dir'
 
-const ROOT = join(import.meta.dirname, '..')
-const XML_DIR = join(ROOT, 'data', 'xml')
+const DATA = dataDir()
+const XML_DIR = join(DATA, 'xml')
 
 // approximate coordinates of a few real places, to have something on the map
 const KNOWN: Record<string, [lat: number, lon: number, type: string]> = {
@@ -69,6 +70,6 @@ ${orgs.map((id) => `    <org xml:id="${id}" type="monastery"><orgName>${esc(labe
   </listOrg>
 </standOff>
 `
-mkdirSync(join(ROOT, 'data', 'indices'), { recursive: true })
-writeFileSync(join(ROOT, 'data', 'indices', 'placeholder-indices.xml'), xml)
+mkdirSync(join(DATA, 'indices'), { recursive: true })
+writeFileSync(join(DATA, 'indices', 'placeholder-indices.xml'), xml)
 console.log(`placeholder index: ${persons.length} persons, ${places.length} places, ${orgs.length} orgs`)

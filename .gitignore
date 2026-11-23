@@ -5,3 +5,6 @@ node_modules
 dist
 public/data
 .env
+
+# working data (real XML); the committed sample data lives in /fixtures
+/data/

@@ -16,18 +16,33 @@ index* until the real index file (`fulda-indices.xml`) is available.
 
 ```bash
 npm install
-npm run dev        # builds the data, then starts nuxt dev
-npm run generate   # builds the data, then the static site in .output/public
-npm run preview    # serves .output/public
+npm run dev:sample        # sample data from ./fixtures, then nuxt dev
+npm run dev               # your working data from ./data, then nuxt dev
+npm run generate          # static site from ./data into .output/public
+npm run generate:sample   # same with the sample data
+npm run preview           # serves .output/public
 ```
 
 ## Data
 
+Two data folders with the same layout:
+
+| folder | content | in git |
+|---|---|---|
+| `data/` | the real working data | **no** (ignored) |
+| `fixtures/` | small pseudonymized sample set for development, tests and CI | yes |
+
 ```
-data/xml/<collection>/*.xml   charters; the folder name is the collection ("fulda", "farfa")
-data/indices/*.xml            index files (persons, places, orgs, relations); IDs are global
-schema/                       XSD (fnf-main.xsd)
+<folder>/xml/<collection>/*.xml   charters; the folder name is the collection ("fulda", "farfa")
+<folder>/indices/*.xml            index files (persons, places, orgs, relations); IDs are global
 ```
+
+The build scripts use `./data` by default; `--data <dir>` picks another folder
+(`npm run data -- --data fixtures`, or `npm run data:sample`). When the data
+shows a structure the fixtures don't cover yet, add a pseudonymized example to
+`fixtures/` (see the pseudonymize tool) so the case stays tested.
+
+Schema files are in `schema/`.
 
 `npm run data` writes to `public/data/`:
 
@@ -45,7 +60,7 @@ schema/                       XSD (fnf-main.xsd)
 The build reports data problems but only fails on XML that cannot be parsed.
 See `docs/datenmodell.md` for the data model.
 
-`npm run data:placeholder-index` regenerates `data/indices/placeholder-indices.xml`
+`npm run data:placeholder-index -- --data fixtures` regenerates `fixtures/indices/placeholder-indices.xml`
 from the references in the charters. **Delete that file once the real index is added.**
 
 ## Structure
