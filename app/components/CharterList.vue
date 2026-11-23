@@ -15,9 +15,7 @@ const { data: persons } = await usePersons()
           <template v-if="e.issuers.length">Issuer: {{ e.issuers.map((i) => persons?.[i]?.name ?? i).join(', ') }}</template>
           <template v-if="roles?.[e.id]?.length"> · as {{ roles[e.id]!.map(label).join(', ') }}</template>
         </span>
-        <span class="chips">
-          <span v-for="t in e.actionTypes" :key="t" class="chip action">{{ label(t) }}</span>
-        </span>
+        <span v-if="e.actionTypes.length" class="action-types">{{ e.actionTypes.map(label).join(' · ') }}</span>
       </NuxtLink>
     </li>
   </ul>

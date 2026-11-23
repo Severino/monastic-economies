@@ -181,3 +181,58 @@ export function joinBrokenWords(nodes: TeiNode[]): TeiNode[] {
   }
   return nodes.filter((n) => n !== '')
 }
+
+const BLOCK_ELEMENTS = new Set(['div', 'ab', 'head', 'p'])
+const isBlock = (n: TeiNode | undefined): n is Exclude<TeiNode, string> =>
+  !!n && typeof n !== 'string' && BLOCK_ELEMENTS.has(n.t)
+const isLb = (n: TeiNode | undefined): n is Exclude<TeiNode, string> => !!n && typeof n !== 'string' && n.t === 'lb'
+const isBlank = (n: TeiNode) => typeof n === 'string' && !n.trim()
+
+/**
+ * Moves line breaks that sit between or at the end of blocks (div/ab/head) to
+ * the start of the following block, so a line number is always rendered next
+ * to the text of its line. Only affects presentation; text order is unchanged.
+ */
+export function hoistLineBreaks(nodes: TeiNode[]): TeiNode[] {
+  // 1. children first; trailing lbs of a block move out behind the block
+  const flat: TeiNode[] = []
+  for (const n of nodes) {
+    if (typeof n === 'string' || !n.c) {
+      flat.push(n)
+      continue
+    }
+    n.c = hoistLineBreaks(n.c)
+    if (!isBlock(n)) {
+      flat.push(n)
+      continue
+    }
+    const trailing: TeiNode[] = []
+    while (n.c.length && (isLb(n.c[n.c.length - 1]) || isBlank(n.c[n.c.length - 1]!))) {
+      const last = n.c.pop()!
+      if (isLb(last)) trailing.unshift(last)
+    }
+    flat.push(n, ...trailing)
+  }
+  // 2. an lb whose next non-blank sibling is a block moves into that block
+  const out: TeiNode[] = []
+  for (let i = 0; i < flat.length; i++) {
+    const n = flat[i]!
+    if (isLb(n)) {
+      const next = flat.slice(i + 1).find((x) => !isBlank(x))
+      if (isBlock(next)) {
+        prependLb(next, n)
+        continue
+      }
+    }
+    out.push(n)
+  }
+  return out
+}
+
+function prependLb(block: Exclude<TeiNode, string>, lb: TeiNode) {
+  const c = (block.c ??= [])
+  const first = c.find((x) => !isBlank(x))
+  // descend into nested blocks (div > ab) but keep a head's own first line
+  if (isBlock(first) && block.t === 'div' && !c.slice(0, c.indexOf(first)).some(isLb)) return prependLb(first, lb)
+  c.unshift(lb)
+}

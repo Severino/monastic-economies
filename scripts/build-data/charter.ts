@@ -1,6 +1,6 @@
 import type { Action, Charter, Mention, PageRef, TeiNode } from '../../shared/types'
 import {
-  attr, child, children, descendants, joinBrokenWords, path, plainText, text, toTree, trimNodes, xmlId, xmlLang,
+  attr, child, children, descendants, hoistLineBreaks, joinBrokenWords, path, plainText, text, toTree, trimNodes, xmlId, xmlLang,
   type El,
 } from './tei'
 
@@ -12,7 +12,7 @@ export interface CharterContext {
 }
 
 const tree = (el: El | undefined, ctx: CharterContext): TeiNode[] =>
-  el ? joinBrokenWords(trimNodes(toTree(el, (a, raw) => checkRef(a, raw, ctx)))) : []
+  el ? hoistLineBreaks(joinBrokenWords(trimNodes(toTree(el, (a, raw) => checkRef(a, raw, ctx))))) : []
 
 function checkRef(attrName: string, raw: string, ctx: CharterContext) {
   if (attrName !== 'ref' && attrName !== 'facs') return

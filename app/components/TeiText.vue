@@ -10,6 +10,7 @@ const kinds = computed(() => {
   return k
 })
 const noteIds = computed(() => Object.keys(props.charter.notes))
+const { hidden } = useLegend()
 
 provide(
   TEI_CONTEXT,
@@ -22,7 +23,7 @@ provide(
 </script>
 
 <template>
-  <div class="tei-text" :class="{ 'tei-running': !lines }">
+  <div class="tei-text" :class="[{ 'tei-running': !lines }, hidden.map((k) => `off-${k}`)]">
     <TeiNodes :nodes="charter.body" />
     <ol v-if="noteIds.length" class="tei-notes">
       <li v-for="id in noteIds" :id="`note-${id}`" :key="id">

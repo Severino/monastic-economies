@@ -27,12 +27,32 @@ function isBlockLevel(siblings: TeiNode[], i: number) {
   return typeof next !== 'string' && BLOCKS.has(next.t)
 }
 
+/** true if nothing but whitespace precedes the node in its parent. */
+const isFirst = (siblings: TeiNode[], i: number) => siblings.slice(0, i).every((n) => typeof n === 'string' && !n.trim())
+
+/** true if the closest preceding non-whitespace sibling is a page break. */
+function followsPb(siblings: TeiNode[], i: number) {
+  for (let j = i - 1; j >= 0; j--) {
+    const n = siblings[j]
+    if (typeof n === 'string') {
+      if (n.trim()) return false
+      continue
+    }
+    return n.t === 'pb'
+  }
+  return false
+}
+
 const TeiNodes = defineComponent({
   name: 'TeiNodes',
-  props: { nodes: { type: Array as PropType<TeiNode[]>, required: true } },
+  props: {
+    nodes: { type: Array as PropType<TeiNode[]>, required: true },
+    block: { type: Boolean, default: false }, // rendered directly inside div/ab/head
+  },
   setup(props) {
     const ctx = inject(TEI_CONTEXT, { kinds: {}, notes: [], lines: true })
-    const kids = (n: Exclude<TeiNode, string>) => (n.c ? h(TeiNodes, { nodes: n.c }) : null)
+    const kids = (n: Exclude<TeiNode, string>) =>
+      n.c ? h(TeiNodes, { nodes: n.c, block: BLOCKS.has(n.t) }) : null
 
     function render(n: TeiNode, i = 0, siblings: TeiNode[] = []): VNodeChild {
       if (typeof n === 'string') return n
@@ -42,7 +62,10 @@ const TeiNodes = defineComponent({
           if (!ctx.lines) return a.break === 'no' ? null : ' '
           // between blocks (or at the end of one) a <br> would create empty lines:
           // only show the line number next to whatever follows
-          if (isBlockLevel(siblings, i))
+          // a block or page break already starts a new line: only the number
+          if (props.block && isFirst(siblings, i))
+            return a.n ? h('span', { class: 'tei-lineno', 'aria-hidden': 'true' }, a.n) : null
+          if (isBlockLevel(siblings, i) || followsPb(siblings, i))
             return a.n ? h('span', { class: 'tei-lb-marker', 'aria-hidden': 'true' }, h('span', { class: 'tei-lineno' }, a.n)) : null
           return [
             a.break === 'no' ? h('span', { class: 'tei-hyphen', 'aria-hidden': 'true' }, '-') : null,
@@ -50,7 +73,12 @@ const TeiNodes = defineComponent({
             a.n ? h('span', { class: 'tei-lineno', 'aria-hidden': 'true' }, a.n) : null,
           ]
         case 'pb':
-          return h('span', { class: 'tei-pb', id: a.n ? `page-${a.n}` : undefined }, `[${a.n ?? 'page'}]`)
+          // rendered as its own line (display: block); clicking selects the facsimile page
+          return h(
+            'span',
+            { class: 'tei-pb', 'data-page': a.n, role: 'button', tabindex: 0, title: `Show page ${a.n ?? ''}` },
+            `fol. ${a.n ?? '?'}`,
+          )
         case 'cb':
           return h('span', { class: 'tei-cb' }, '‖')
         case 'head':
