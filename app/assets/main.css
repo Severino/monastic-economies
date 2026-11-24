@@ -1050,3 +1050,155 @@ select {
         gap: 0.75rem;
     }
 }
+
+/* person page: Charters | Graph */
+.view-switch {
+    display: inline-flex;
+    margin: 1.5rem 0 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.view-switch button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    border: 0;
+    background: var(--surface);
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+}
+.view-switch button + button {
+    border-left: 1px solid var(--border);
+}
+.view-switch button.active {
+    background: var(--action-bg);
+    color: var(--text);
+}
+.neighbor-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.neighbor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 0.6rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    color: var(--text);
+    text-decoration: none;
+}
+.neighbor-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 4px;
+}
+.neighbor-row:hover,
+.neighbor-row.selected {
+    background: var(--action-bg);
+}
+.neighbor-row .neighbor {
+    flex: 1;
+    min-width: 0;
+}
+.neighbor-row.off .neighbor {
+    opacity: 0.45;
+}
+.neighbor-row .eye {
+    display: grid;
+    place-items: center;
+    padding: 0.3rem;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+}
+.neighbor-row .eye:hover {
+    color: var(--text);
+}
+.neighbor .name {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    color: var(--person);
+}
+.neighbor .name strong {
+    font-weight: 600;
+}
+.neighbor .name .rest {
+    font-weight: 400;
+}
+.neighbor .relations,
+.graph-legend .accent {
+    color: var(--accent);
+    font-size: 0.85em;
+}
+.neighbor .muted {
+    margin-left: auto;
+}
+.graph-pane {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background: var(--surface);
+}
+.person-graph {
+    flex: 1;
+    min-height: 0;
+}
+.graph-legend {
+    margin: 0;
+    padding: 0.5rem 1.25rem;
+    border-top: 1px solid var(--border);
+}
+@media (max-width: 899px) {
+    .person-graph {
+        height: 70vh;
+        flex: none;
+    }
+}
+.graph-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+.depth-switch {
+    margin: 0;
+}
+.depth-switch button {
+    padding: 0.2rem 0.65rem;
+}
+.hidden-row {
+    flex-wrap: wrap;
+}
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.chip:hover {
+    border-color: var(--accent);
+}
+.link-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
+}

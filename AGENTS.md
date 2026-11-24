@@ -15,9 +15,9 @@ UI language: **English**.
   the output (`.output/public`) is served by **Apache** (`public/.htaccess`).
 - **Build-time XML processing in TypeScript** (`scripts/build-data`, `@xmldom/xmldom`).
   No SaxonJS/XSLT. TEI → JSON in `public/data`, then Nuxt renders from that JSON.
-- **Nuxt 4 / Vue 3.** Icons: **Lucide** (`lucide-vue-next`, slim strokes: `.lucide { stroke-width: 1.5 }`; no other icon sets, no inline SVG icons). Search: plain substring scan in `shared/search.ts` (no search library; see Search). Map: **MapLibre** (planned). Person network: **sigma.js** (planned).
+- **Nuxt 4 / Vue 3.** Icons: **Lucide** (`lucide-vue-next`, slim strokes: `.lucide { stroke-width: 1.5 }`; no other icon sets, no inline SVG icons). Search: plain substring scan in `shared/search.ts` (no search library; see Search). Map: **MapLibre** (planned). Person network: **sigma.js 3** (+ graphology), loaded client-only.
 - During prerendering, data is read through `server/api/data/[...path]` (Nitro server assets);
-  in the browser, pages use the prerendered payloads. Only the search data (`search.json`) is fetched from `/data/`.
+  in the browser, pages use the prerendered payloads. Only the search data (`search.json`) and the person network for the graph (`network.json`) are fetched from `/data/`.
 
 ## Data
 
@@ -48,7 +48,8 @@ UI language: **English**.
 ## URL and state
 
 - Every meaningful navigation changes the URL, so the back button and shared links restore the view
-  (e.g. catalog filters `?person=&place=&action=&q=`, `?page=3r`, `?view=running`, `?preview=`).
+  (e.g. catalog filters `?person=&place=&action=&q=`, `?page=3r`, `?view=running`, `?preview=`,
+  person page `?view=graph`).
 - Select-type filters `push` a history entry; typing in the search box only `replace`s.
 - Planned **page stack** (not built yet): `?stack=persons:hugo1,places:alsace`. Therefore views
   (`CharterView`, `PersonView`, `PlaceView`) are self-contained and load their own data by id, so they
@@ -99,6 +100,24 @@ UI language: **English**.
 - Colour by number of charters: grey for 0, then blue (1) → purple (3) → pink (5+), tokens `--map-0/1/3/5`
   (clusters use the summed count). Places without charters are hidden by default; the control box (bottom right)
   has the legend and a toggle for them, stored in `localStorage` (`monastic-economies:map-show-empty`).
+
+## Person graph
+
+- The person page toggles **Charters | Graph** (`?view=graph`, pushes a history entry).
+- Graph = network around the person, **1–5 steps** (`?depth=`, default 1). A link is co-occurrence in a charter
+  or an explicit `relation` from the index. Layout is a radial tree: ring = step, each person sits in the sector of
+  the person it was reached from (strongest link). Drawn lines: all links of the centre person, and from step 2 on
+  only the link each person was reached through (all links would be a hairball: every charter is a clique).
+- Line thickness = number of shared charters (square-root scale; hover a line for the count). Explicit relations
+  are accent-coloured lines labelled with the relation name; directed ones get an arrow head (active → passive),
+  at both ends when relations go both ways.
+- Click a person in the graph to hide them (`?hide=a,b`, kept when moving to another person); hidden persons are
+  not followed to further steps. Ctrl/⌘-click opens the person. The list next to the graph has an eye toggle per row.
+- Names in the graph and its list: first word bold, the rest of the name below in normal weight (`splitName`; the
+  index has no separate name parts).
+- The graph reads `network.json` (compact, persons only, written by the build) in the browser. The list of direct
+  connections next to it is computed from `relations.json` while prerendering (`useEgoNetwork`), so it is in the
+  page payload. Graph colours are read from the CSS tokens and re-read when the theme changes.
 
 ## Code style
 

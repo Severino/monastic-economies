@@ -13,7 +13,15 @@
  */
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from "node:fs"
 import { basename, dirname, join, relative, resolve } from "node:path"
-import type { Book, BuildIssue, CatalogEntry, Charter, CharterLink, EntityKind } from "../../shared/types"
+import type {
+    Book,
+    BuildIssue,
+    PersonNetwork,
+    CatalogEntry,
+    Charter,
+    CharterLink,
+    EntityKind,
+} from "../../shared/types"
 import { parseCharter } from "./charter"
 import { emptyIndices, readIndices } from "./indices"
 import { attr, descendants, parseXml, type El } from "./tei"
@@ -262,6 +270,20 @@ const search: SearchDoc[] = charters.map((c) => ({
         .join(" "),
 }))
 
+/** Compact person-to-person network for the graph view (fetched in the browser, any depth). */
+function personNetwork(): PersonNetwork {
+    const isPerson = (id: string) => idx.persons.has(id)
+    const relations: PersonNetwork["relations"] = []
+    for (const r of idx.relations) {
+        const mutual = (r.mutual ?? []).filter(isPerson)
+        for (let i = 0; i < mutual.length; i++)
+            for (let j = i + 1; j < mutual.length; j++) relations.push([mutual[i], mutual[j], r.name, 0])
+        for (const a of (r.active ?? []).filter(isPerson))
+            for (const p of (r.passive ?? []).filter(isPerson)) if (a !== p) relations.push([a, p, r.name, 1])
+    }
+    return { edges: [...cooc.values()].map((e) => [e.source, e.target, e.charters.length]), relations }
+}
+
 // ---- 5. write -------------------------------------------------------------------
 rmSync(OUT, { recursive: true, force: true })
 mkdirSync(join(OUT, "charters"), { recursive: true })
@@ -273,6 +295,7 @@ write("persons.json", [...idx.persons.values()])
 write("places.json", [...idx.places.values()])
 write("orgs.json", [...idx.orgs.values()])
 write("relations.json", { explicit: idx.relations, cooccurrence: [...cooc.values()] })
+write("network.json", personNetwork())
 write("books.json", [...books.values()])
 write("places.geojson", geojson)
 // title, reading text and entity names per charter, for the catalog search (loaded lazily)

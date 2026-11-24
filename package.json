@@ -16,9 +16,11 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "graphology": "^0.26.0",
     "lucide-vue-next": "1.0.0",
     "maplibre-gl": "^5.24.1",
-    "nuxt": "^4.6.4"
+    "nuxt": "^4.6.4",
+    "sigma": "^3.0.2"
   },
   "devDependencies": {
     "@xmldom/xmldom": "^0.9.12",
