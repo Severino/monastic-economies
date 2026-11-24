@@ -1,0 +1,8 @@
+.nuxt
+.output
+node_modules
+public/data
+data
+fixtures
+schema
+package-lock.json

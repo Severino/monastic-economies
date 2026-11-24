@@ -1,0 +1,991 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:sch="http://purl.oclc.org/dsdl/schematron" elementFormDefault="qualified"
+	targetNamespace="http://www.tei-c.org/ns/1.0" xmlns:tei="http://www.tei-c.org/ns/1.0"
+	xmlns:fnf="Farfa-and-Fulda">
+	<xs:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="xml.xsd"/>
+	<xs:import namespace="Farfa-and-Fulda" schemaLocation="fnf-restrictions.xsd"/>
+
+	
+	<xs:annotation>
+		<xs:appinfo>
+			<sch:ns uri="http://www.tei-c.org/ns/1.0" prefix="tei"/>
+		</xs:appinfo>
+	</xs:annotation>
+
+	<xs:element name="TEI">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:teiHeader"/>
+				<xs:element minOccurs="0" ref="tei:facsimile"/>
+				<xs:element ref="tei:text"/>
+				<xs:element maxOccurs="unbounded" ref="tei:standOff"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="teiHeader">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:fileDesc"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="fileDesc">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:titleStmt"/>
+				<xs:element ref="tei:publicationStmt"/>
+				<xs:element ref="tei:sourceDesc"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="titleStmt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:title"/>
+				<xs:element ref="tei:respStmt"/>
+				<xs:element ref="tei:funder"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="title" type="xs:NMTOKEN"/>
+	<xs:element name="respStmt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:resp"/>
+				<xs:element ref="tei:name"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="resp" type="xs:string"/>
+	<xs:element name="funder">
+		<xs:complexType mixed="true">
+			<xs:attribute name="ref" use="required" type="xs:anyURI"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="publicationStmt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:p"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="sourceDesc">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:msDesc"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="msDesc">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:msIdentifier"/>
+				<xs:element ref="tei:msPart"/>
+				<xs:element ref="tei:physDesc"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="msPart">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:msIdentifier"/>
+				<xs:element ref="tei:msContents"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="msContents">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:summary"/>
+				<xs:element ref="tei:msItem"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="summary">
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element minOccurs="0" maxOccurs="unbounded" ref="tei:choice"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="cb">
+		<xs:annotation>
+			<xs:documentation>Beginning of a new column in the manuscript.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attributeGroup ref="tei:onBeginnings"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="choice">
+		<xs:annotation>
+			<xs:documentation>is used for a parallel encoding of the same text with different
+				viewpoint.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:seg"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="seg">
+		<xs:annotation>
+			<xs:documentation>= <i>segment</i>. Marks a short text passage for linking purpose only, if no
+				other tag can be used.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element ref="tei:rs" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+			<xs:attribute ref="xml:lang" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="msItem">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:locus"/>
+				<xs:element ref="tei:textLang"/>
+				<xs:element ref="tei:docDate"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="textLang" type="xs:NCName"/>
+	<xs:element name="docDate">
+		<xs:complexType>
+			<xs:attribute name="when" use="required" type="xs:NMTOKEN"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="physDesc">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:handDesc"/>
+				<xs:element ref="tei:scriptDesc"/>
+				<xs:element minOccurs="0" ref="tei:decoDesc"/>
+				<xs:element ref="tei:additions"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="handDesc">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:handNote"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="handNote" type="xs:NCName"/>
+	<xs:element name="scriptDesc">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:scriptNote"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="scriptNote">
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element minOccurs="0" maxOccurs="unbounded" ref="tei:bibl"/>
+			</xs:sequence>
+			<xs:attribute ref="xml:lang"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="bibl" type="xs:string"/>
+	<xs:element name="decoDesc">
+		<xs:complexType>
+			<xs:sequence maxOccurs="unbounded">
+				<xs:element ref="tei:decoNote"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="decoNote">
+		<xs:complexType mixed="true">
+			<xs:sequence minOccurs="0">
+				<xs:element ref="tei:locus"/>
+			</xs:sequence>
+			<xs:attribute name="type" type="xs:string"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="additions">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:ab" minOccurs="0"/>
+				<xs:element ref="tei:list" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="list">
+		<xs:complexType>
+			<xs:sequence maxOccurs="unbounded">
+				<xs:element ref="tei:item"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="item">
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element minOccurs="0" maxOccurs="unbounded" ref="tei:locus"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="facsimile">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:surface"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="surface">
+		<xs:annotation>
+			<xs:documentation>Mainly a container element for describing a manuscript
+				page.</xs:documentation>
+			<xs:appinfo>
+				<sch:pattern>
+					
+					<sch:rule context="tei:surface[@xml:id]">
+						<sch:assert test="matches(@xml:id, 'f-\d+[rv][ab]?')">The given ID doesn't follow the
+							rule f- plus NUMBER plus optional r or v!</sch:assert>
+					</sch:rule>
+				</sch:pattern>
+			</xs:appinfo>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:graphic"/>
+			</xs:sequence>
+			<xs:attribute ref="xml:id" use="required"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="graphic">
+		<xs:annotation>
+			<xs:documentation>Linking to the graphic file of a manuscript page.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="url" use="required" type="xs:NMTOKEN"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="text">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:body"/>
+			</xs:sequence>
+			<xs:attribute ref="xml:base" use="required"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="body">
+		<xs:complexType>
+			<xs:choice maxOccurs="unbounded">
+				<xs:element ref="tei:div"/>
+				<xs:element ref="tei:head"/>
+				<xs:element ref="tei:metamark"/>
+				<xs:group ref="tei:beginnings"/>
+			</xs:choice>
+			<xs:attribute ref="xml:lang" use="required"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="name">
+		<xs:complexType mixed="true">
+			<xs:attribute name="key" type="xs:anyURI"/>
+			<xs:attribute ref="xml:lang"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="p" type="xs:string"/>
+	<xs:element name="msIdentifier">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:sequence minOccurs="0">
+					<xs:element ref="tei:country"/>
+					<xs:element ref="tei:settlement"/>
+					<xs:element ref="tei:repository"/>
+				</xs:sequence>
+				<xs:element ref="tei:idno"/>
+				<xs:choice minOccurs="0">
+					<xs:element ref="tei:altIdentifier"/>
+					<xs:element ref="tei:msName"/>
+				</xs:choice>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="country" type="xs:string"/>
+	<xs:element name="settlement" type="xs:string"/>
+	<xs:element name="repository" type="xs:string"/>
+
+	<xs:element name="altIdentifier">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:idno"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="msName" type="xs:string"/>
+	<xs:element name="locus">
+		<xs:complexType mixed="true">
+			<xs:attribute name="from" type="xs:NMTOKEN"/>
+			<xs:attribute name="to" type="xs:NMTOKEN"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="ab">
+		<xs:annotation>
+			<xs:documentation>= <i>anonymous block</i>. Container element for text in general or the sub
+				structure units of a charter. Contains text and specific tags.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="tei:date"/>
+				<xs:element ref="tei:hi"/>
+				<xs:element ref="tei:ref"/>
+				<xs:element ref="tei:rs"/>
+				<xs:element ref="tei:supplied"/>
+				<xs:group ref="tei:beginnings"/>
+				<xs:group ref="tei:add-del-subst"/>
+			</xs:choice>
+			<xs:attribute name="type" type="fnf:subpartCharter"/>
+			<xs:attribute ref="xml:lang"/>
+			<xs:attributeGroup ref="tei:rend"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="date">
+		<xs:annotation>
+			<xs:documentation>You may use @when, or @from with @to, but not a combination of @when and
+				another attribute.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="tei:add"/>
+				<xs:element ref="tei:hi"/>
+				<xs:element ref="tei:rs"/>
+				<xs:element ref="tei:supplied"/>
+				<xs:group ref="tei:beginnings"/>
+			</xs:choice>
+			<xs:attribute name="type" type="xs:NCName"/>
+			<xs:attribute ref="xml:id"/>
+			<xs:attributeGroup ref="tei:dating"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="ptr">
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:string">
+					<xs:attribute name="target" type="xs:anyURI"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="ref">
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="tei:hi"/>
+				<xs:element ref="tei:rs"/>
+				<xs:group ref="tei:beginnings"/>
+			</xs:choice>
+			<xs:attribute name="source" type="xs:anyURI"/>
+			<xs:attribute name="target" type="xs:anyURI"/>
+			<xs:attribute name="type">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="biblical"/>
+						<xs:enumeration value="canonical"/>
+						<!-- EM: adding charter for references to charters,
+						particularly useful when the charter is now lost 
+						(I suppose this should be an adjective, but I don't know
+						if there is an adjective of charter!) -->
+						<xs:enumeration value="charter"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<!-- EM: Including this for now, but
+      we can decide how to encode sources 
+      in a more machine-readable way later -->
+			<xs:attribute name="cRef">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:pattern value="[A-z]{2,6}\.? \d{1,3}:\d{1,3}"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute ref="xml:id"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="lb">
+		<xs:annotation>
+			<xs:documentation>Beginning of a new line in the manuscript.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attributeGroup ref="tei:onBeginnings"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="pb">
+		<xs:annotation>
+			<xs:documentation> Beginning of a new page in the manuscript.</xs:documentation>
+			<xs:appinfo>
+				<sch:pattern>
+					
+					<sch:rule context="tei:pb[@facs]">
+						<sch:assert test="id(translate(@facs, '#', ''))/self::tei:surface">@facs doesn't link to
+							the facsimile area!</sch:assert>
+					</sch:rule>
+				</sch:pattern>
+			</xs:appinfo>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute ref="xml:base"/>
+			<xs:attributeGroup ref="tei:onBeginnings"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="div">
+		<xs:annotation>
+			<xs:documentation>= <i>division</i>. Container element for the main structure of a charter:
+					<i>protocol</i>, <i>contextus</i>, or <i>eschatocol</i>.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element minOccurs="0" ref="tei:head"/>
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element ref="tei:ab"/>
+					<xs:element ref="tei:metamark"/>
+					<xs:group ref="tei:beginnings"/>
+				</xs:choice>
+			</xs:sequence>
+			<xs:attribute name="type" type="fnf:partCharter"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="head">
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="tei:hi"/>
+				<xs:element ref="tei:rs"/>
+				<xs:group ref="tei:beginnings"/>
+			</xs:choice>
+			<xs:attributeGroup ref="tei:rend"/>
+			<xs:attribute name="type" type="fnf:subpartCharter"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="standOff">
+		<xs:annotation>
+			<xs:documentation>There are two standOff containers for each charter: one is for the
+				annotation of certain text passages, the other one is for linking to entities as persons,
+				places etc.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:choice>
+				<xs:element ref="tei:listAnnotation"/>
+				<xs:sequence>
+					
+					<xs:sequence minOccurs="0">
+						<xs:element minOccurs="0" ref="tei:listEvent"/>
+						<xs:element ref="tei:listPerson"/>
+						<xs:element ref="tei:listRelation"/>
+						<xs:element ref="tei:listPlace"/>
+						<xs:element ref="tei:listOrg" minOccurs="0"/>
+					</xs:sequence>
+				</xs:sequence>
+			</xs:choice>
+			<xs:attribute name="type" type="fnf:annotationBlock"/>
+			<xs:attribute ref="xml:base"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="listAnnotation">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:note"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="listPerson">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:head"/>
+				<xs:element maxOccurs="unbounded" ref="tei:person"/>
+			</xs:sequence>
+			<xs:attribute ref="xml:base"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="person">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:choice minOccurs="0">
+					<xs:element ref="tei:name"/>
+					<xs:element ref="tei:persName"/>
+				</xs:choice>
+				<xs:sequence>
+					<xs:element ref="tei:socecStatus" minOccurs="0"/>
+					<xs:element ref="tei:affiliation" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:element ref="tei:note" minOccurs="0"/>
+				</xs:sequence>
+			</xs:sequence>
+			<xs:attribute name="role"/>
+			<xs:attribute name="sex" type="xs:NCName"/>
+			<xs:attribute ref="xml:id" use="required"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="persName">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:name"/>
+				<xs:element minOccurs="0" ref="tei:roleName"/>
+			</xs:sequence>
+			<xs:attribute name="key" type="xs:anyURI"/>
+			<xs:attribute name="ref" type="xs:anyURI"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="roleName">
+		<xs:complexType mixed="true">
+			<xs:attribute ref="xml:lang"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="affiliation">
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:string">
+					<xs:attribute name="type" default="family"/>
+					<xs:attribute name="ref" type="xs:anyURI"/>
+					<xs:attribute ref="xml:lang"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="socecStatus"/>
+
+	<xs:element name="listRelation">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:relation"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="relation">
+		<xs:annotation>
+			<xs:appinfo>
+				<sch:pattern>
+					
+					<sch:rule context="tei:relation[matches(@name, '^(sibling|marriage|family|neighbour)$')]">
+						<sch:assert test="
+								@mutual
+								and count(tokenize(normalize-space(@mutual), '\s+')) ge 2
+								and (every $id in tokenize(normalize-space(@mutual), '\s+')
+									satisfies id(substring-after($id, '#'))/self::tei:person)
+								and not(@active or @passive)"> The relation is mutual. The attributes @active
+							and @passive aren't allowed. It has to be @mutual with two references to a person in
+							&lt;listPerson&gt;. </sch:assert>
+					</sch:rule>
+					<sch:rule
+						context="tei:relation[matches(@name, '^(ancestor|dependant|godfather|parent)$')]">
+						<sch:assert test="
+								@active and @passive
+								and (every $id in tokenize(normalize-space(@active), '\s+')
+									satisfies id(substring-after($id, '#'))/self::tei:person)
+								and (every $id in tokenize(normalize-space(@passive), '\s+')
+									satisfies id(substring-after($id, '#'))/self::tei:person)
+								and not(@mutual)">The relation is directional. The attributes @active and
+							@passive have to get refrences to persons in &lt;listPerson&gt;, @mutual isn't
+							allowed.</sch:assert>
+					</sch:rule>
+					<sch:rule context="tei:relation[matches(@name, '^(founder|head)$')]">
+						<sch:assert test="
+								@active and @passive
+								and (every $id in tokenize(normalize-space(@active), '\s+')
+									satisfies id(substring-after($id, '#'))/self::tei:person)
+								and (every $id in tokenize(normalize-space(@passive), '\s+')
+									satisfies id(substring-after($id, '#'))/(self::tei:place or self::tei:org))
+								and not(@mutual)">The relation is directional. The attributes @active, which
+							links to a person in &lt;listPerson&gt;, and @passive, which links to a place in
+							&lt;listPlace&gt; or organisation in &lt;listOrg&gt;, have to be used, @mutual isn't
+							allowed.</sch:assert>
+					</sch:rule>
+				</sch:pattern>
+			</xs:appinfo>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="active">
+				<xs:simpleType>
+					<xs:list itemType="xs:anyURI"/>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="mutual">
+				<xs:simpleType>
+					<xs:list itemType="xs:anyURI"/>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="name" use="required" type="fnf:relationType"/>
+			<xs:attribute name="passive">
+				<xs:simpleType>
+					<xs:list itemType="xs:anyURI"/>
+				</xs:simpleType>
+			</xs:attribute>
+			
+			<xs:attribute name="type" type="fnf:relationCategory"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="listPlace">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:place"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="place">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:placeName"/>
+				<xs:element minOccurs="0" ref="tei:location"/>
+				<xs:element minOccurs="0" ref="tei:note"/>
+			</xs:sequence>
+			<xs:attribute name="type" type="fnf:placeTypes"/>
+			<xs:attribute ref="xml:id" use="required"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="placeName">
+		<xs:complexType mixed="true">
+			<xs:attribute ref="xml:lang"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="location">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:geo"/>
+				<xs:element ref="tei:bibl" minOccurs="0"/>
+			</xs:sequence>
+			<xs:attributeGroup ref="tei:certainty-responsibility"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="geo">
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:string">
+					<xs:attribute name="decls" use="required"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="listOrg">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:org"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="org">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:orgName"/>
+				<xs:element ref="tei:ptr" minOccurs="0"/>
+			</xs:sequence>
+			<xs:attribute ref="xml:id" use="required"/>
+			<xs:attribute name="type"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="orgName">
+		<xs:complexType mixed="true">
+			<xs:attribute ref="xml:lang"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="listEvent">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:desc"/>
+				<xs:element maxOccurs="unbounded" ref="tei:event"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="event">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" ref="tei:label"/>
+				<xs:element maxOccurs="unbounded" ref="tei:desc"/>
+			</xs:sequence>
+			<xs:attribute name="key" type="xs:anyURI"/>
+			<xs:attribute ref="xml:id" use="required"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="label">
+		<xs:complexType mixed="true">
+			<xs:attribute ref="xml:lang"/>
+		</xs:complexType>
+	</xs:element>
+
+	<!--<xs:element name="listObject">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="tei:desc"/>
+        <xs:element maxOccurs="unbounded" ref="tei:object"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="object">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="tei:objectIdentifier"/>
+        <xs:element minOccurs="0" ref="tei:ab"/>
+      </xs:sequence>
+      <xs:attribute ref="xml:id" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="objectIdentifier">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="tei:objectName"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="objectName" type="xs:string"/>-->
+
+	<xs:element name="idno" type="xs:string"/>
+
+	<xs:element name="del">
+		<xs:annotation>
+			<xs:documentation>= <i>deletion</i>. Marks deleted text by the scribe or a later
+				hand.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:NCName">
+					<xs:attribute name="hand" type="xs:NCName"/>
+					<xs:attributeGroup ref="tei:rend"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="rs">
+		<xs:annotation>
+			<xs:documentation>= <i>referencing string</i>. Links the string to a list in the index file,
+				or an explaining annotation.</xs:documentation>
+			<xs:appinfo>
+				<sch:pattern>
+					
+					<sch:rule context="tei:rs[@ref]">
+						<sch:assert test="
+								id(translate(@ref, '#', ''))/self::tei:person
+								or id(translate(@ref, '#', ''))/self::tei:place
+								or id(translate(@ref, '#', ''))/self::tei:org">@ref doesn't link to a person,
+							place or organisation!</sch:assert>
+					</sch:rule>
+					
+					<sch:rule context="tei:rs[@xml:id]">
+						<sch:assert
+							test="//tei:listAnnotation/tei:note[@corresp = concat('#', current()/@xml:id)]">The
+							given ID doesn't has a linked note in &lt;listAnnotation&gt;!</sch:assert>
+					</sch:rule>
+				</sch:pattern>
+			</xs:appinfo>
+		</xs:annotation>
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="tei:date"/>
+				<xs:element ref="tei:hi"/>
+				<xs:element ref="tei:rs"/>
+				<xs:element ref="tei:sic"/>
+				<xs:group ref="tei:beginnings"/>
+				<xs:group ref="tei:add-del-subst"/>
+			</xs:choice>
+			<xs:attribute name="ref">
+				<xs:annotation>
+					<xs:documentation>is used for the linking to perons, places, and
+						organisations.</xs:documentation>					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:list itemType="xs:anyURI"/>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="role" type="fnf:role"/>
+			<xs:attribute name="type" type="fnf:actions-n-measurements"/>
+			<xs:attribute ref="xml:id"/>
+			<xs:attributeGroup ref="tei:rend"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="sic" type="xs:NCName"/>
+
+	<xs:element name="hi">
+		<xs:annotation>
+			<xs:documentation> = <i>highlighting</i>. Marks ornamented text passages without a declared
+				semantic meaning. .</xs:documentation>
+		</xs:annotation>
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="tei:hi"/>
+				<xs:element ref="tei:rs"/>
+				<xs:group ref="tei:beginnings"/>
+			</xs:choice>
+			<xs:attribute name="rend" use="required" type="fnf:renditions"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="metamark">
+		<xs:annotation>
+			<xs:documentation>A metamark is a short text or sign, which is not actually part of the
+				charter text.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="xs:anyType">
+					<xs:attributeGroup ref="tei:rend"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="subst">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="tei:del"/>
+				<xs:element ref="tei:add"/>
+			</xs:sequence>
+		</xs:complexType>
+
+	</xs:element>
+
+	<xs:element name="add">
+		<xs:annotation>
+			<xs:documentation>= <i>addition</i>. Marks later added text in the charter by a hand of the
+				past.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:NCName">
+					<xs:attribute name="hand" type="xs:NCName"/>
+					<xs:attribute name="place" type="xs:NCName"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="supplied">
+		<xs:annotation>
+			<xs:documentation>Marks added text in the charter by the editors.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:string">
+					<xs:attribute name="reason" type="xs:NCName"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="note">
+		<xs:annotation>
+			<xs:appinfo>
+				<sch:pattern>
+					
+					<sch:rule context="tei:note[@corresp]">
+						<sch:assert test="id(translate(@corresp, '#', ''))/self::*[ancestor::tei:body]">The
+							refrence doesn't link back to an element in the charter!</sch:assert>
+					</sch:rule>
+				</sch:pattern>
+			</xs:appinfo>
+		</xs:annotation>
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="tei:hi"/>
+				<xs:element ref="tei:ref"/>
+				<xs:element ref="tei:seg"/>
+				<xs:group ref="tei:add-del-subst"/>
+			</xs:choice>
+			<xs:attribute name="corresp" type="xs:anyURI"/>
+			<xs:attribute ref="xml:base"/>
+			<xs:attributeGroup ref="tei:certainty-responsibility"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="desc" type="xs:string"/>
+
+	<xs:group name="beginnings">
+		<xs:sequence>
+			<xs:element ref="tei:pb" minOccurs="0"/>
+			<xs:element ref="tei:cb" minOccurs="0"/>
+			<xs:element ref="tei:lb"/>
+		</xs:sequence>
+	</xs:group>
+
+	<xs:group name="add-del-subst">
+		<xs:choice>
+			<xs:element ref="tei:add"/>
+			<xs:element ref="tei:del"/>
+			<xs:element ref="tei:subst"/>
+		</xs:choice>
+	</xs:group>
+
+	<xs:attributeGroup name="onBeginnings">
+		<xs:attribute name="break" default="no" type="xs:NCName"/>
+		<xs:attribute name="facs" type="xs:anySimpleType"/>
+		<xs:attribute name="n">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:pattern value="(f-)?\d+[rv]?"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
+
+	<xs:attributeGroup name="dating">
+		<xs:annotation>
+			<xs:appinfo>
+				<sch:pattern>
+					<sch:rule context="tei:date[@when]">
+						<sch:report test="@from | @to">No combination of @when with other attributes
+							allowed.</sch:report>
+					</sch:rule>
+
+					<sch:rule context="tei:date[@from and @to]">
+						<sch:assert test="@from &lt; @to">The value of @from hast to be lower than the value of
+							@to.</sch:assert>
+					</sch:rule>
+				</sch:pattern>
+			</xs:appinfo>
+		</xs:annotation>
+		<xs:attribute name="when" type="fnf:dating"/>
+		<xs:attribute name="from" type="fnf:dating"/>
+		<xs:attribute name="to" type="fnf:dating"/>
+	</xs:attributeGroup>
+
+	<xs:attributeGroup name="rend">
+		<xs:attribute name="rend" type="fnf:renditions"/>
+	</xs:attributeGroup>
+
+	<xs:attributeGroup name="certainty-responsibility">
+		<xs:attribute name="cert" type="xs:string"/>
+		<xs:attribute name="resp" type="xs:string"/>
+	</xs:attributeGroup>
+
+</xs:schema>

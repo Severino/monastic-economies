@@ -1,0 +1,19 @@
+# Apache config for the static build (.output/public)
+Options -MultiViews
+DirectoryIndex index.html
+
+# Prerendered pages live in <route>/index.html. Anything that was not
+# prerendered (e.g. a new id) falls back to the client-side app.
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/(data|_nuxt)/
+RewriteRule ^ /200.html [L]
+
+ErrorDocument 404 /404.html
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>

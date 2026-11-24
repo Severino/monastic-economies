@@ -1,0 +1,28 @@
+{
+  "name": "monastic-economies",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "data": "tsx scripts/build-data/index.ts",
+    "data:sample": "tsx scripts/build-data/index.ts --data fixtures",
+    "data:placeholder-index": "tsx scripts/make-placeholder-index.ts",
+    "dev": "npm run data && nuxt dev",
+    "dev:sample": "npm run data:sample && nuxt dev",
+    "generate": "npm run data && nuxt generate",
+    "generate:sample": "npm run data:sample && nuxt generate",
+    "preview": "npx serve .output/public",
+    "postinstall": "nuxt prepare",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "lucide-vue-next": "1.0.0",
+    "nuxt": "^4.6.4"
+  },
+  "devDependencies": {
+    "@xmldom/xmldom": "^0.9.12",
+    "prettier": "3.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
