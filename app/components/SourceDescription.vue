@@ -89,7 +89,7 @@ const hasPhys = computed(
                 <div>
                     <dt>Date</dt>
                     <dd>
-                        <time :datetime="charter.date.when">{{ formatDate(charter.date) || "undated" }}</time>
+                        <time :datetime="charter.date.when">{{ formatDateHuman(charter.date) || "undated" }}</time>
                     </dd>
                 </div>
                 <div v-if="charter.language">

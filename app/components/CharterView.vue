@@ -297,7 +297,7 @@ const entities = computed(() => {
                         <li title="Date">
                             <CalendarDays :size="15" aria-hidden="true" />
                             <span class="sr-only">Date</span>
-                            <time :datetime="charter.date.when">{{ formatDate(charter.date) || "undated" }}</time>
+                            <time :datetime="charter.date.when">{{ formatDateHuman(charter.date) || "undated" }}</time>
                         </li>
                     </ul>
                 </div>

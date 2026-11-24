@@ -24,17 +24,28 @@ export const useOrgs = () => useIndex<Org>("orgs")
 export const placeName = (p?: Place) => p?.names[0]?.name ?? "?"
 export const orgName = (o?: Org) => o?.names[0]?.name ?? "?"
 
-export function formatDate(d?: { when?: string; from?: string; to?: string }) {
+export function formatDateHuman(d?: { when?: string; from?: string; to?: string }) {
+    console.log("HUMAN", d)
     if (!d) return ""
-    const f = (s: string) => s.replace(/^0+/, "")
-    if (d.when)
-        return new Date(d.when).toLocaleDateString("en", {
+    const format = (text: string) => {
+        return new Date(text).toLocaleDateString("en", {
             day: "numeric",
             month: "long",
             year: "numeric",
             weekday: "short",
         })
-    if (d.from || d.to) return `${d.from ? f(d.from) : "?"} – ${d.to ? f(d.to) : "?"}`
+    }
+    if (d.when) return format(d.when)
+    if (d.from || d.to) return `${d.from ? format(d.from) : "?"} – ${d.to ? format(d.to) : "?"}`
+    return ""
+
+}
+
+export function formatDate(d?: { when?: string; from?: string; to?: string }) {
+    if (!d) return ""
+    const format = (s: string) => s.replace(/^0+/, "")
+    if (d.when) return format(d.when);
+    if (d.from || d.to) return `${d.from ? format(d.from) : "?"} – ${d.to ? format(d.to) : "?"}`
     return ""
 }
 
