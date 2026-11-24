@@ -1195,32 +1195,6 @@ select {
     margin-top: 2rem;
 }
 
-.entry {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    padding: 1.2rem;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--surface);
-    text-decoration: none;
-    color: var(--text);
-}
-
-.entry strong {
-    font-family: var(--font-text);
-    font-size: 1.3rem;
-    color: var(--accent);
-}
-
-.entry span {
-    color: var(--muted);
-}
-
-.entry.disabled {
-    opacity: 0.55;
-}
-
 @media (max-width: 30rem) {
     .site-header {
         gap: 1rem;
