@@ -96,6 +96,9 @@ UI language: **English**.
 - Basemap: OpenFreeMap vector styles (`positron` light, `dark` dark; free, no API key), switched with the site theme
   (`useDarkTheme`). Layers are re-added on every `style.load`. Layer colours come from the CSS tokens.
 - The selected place is `?place=<id>` (push); a side panel (bottom sheet on phones) lists its charters.
+- Colour by number of charters: grey for 0, then blue (1) → purple (3) → pink (5+), tokens `--map-0/1/3/5`
+  (clusters use the summed count). Places without charters are hidden by default; the control box (bottom right)
+  has the legend and a toggle for them, stored in `localStorage` (`monastic-economies:map-show-empty`).
 
 ## Code style
 

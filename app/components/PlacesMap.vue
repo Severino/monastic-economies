@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { GeoJSONSource, Map as MlMap, MapLayerMouseEvent } from "maplibre-gl"
+import type { ExpressionSpecification, GeoJSONSource, Map as MlMap, MapLayerMouseEvent } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 
 /**
- * Map of all places with coordinates. Client-only (MapLibre needs the DOM).
+ * Map of all places with coordinates (places without charters only with `showEmpty`). Client-only (MapLibre needs the DOM).
  * Basemap: OpenFreeMap vector tiles (free, no API key), light or dark style
  * following the site theme. Clicking a place emits its id; the selected place
  * is highlighted.
  */
-const props = defineProps<{ selected?: string }>()
+const props = defineProps<{ selected?: string; showEmpty?: boolean }>()
 const emit = defineEmits<{ select: [id: string | undefined] }>()
 
 const STYLES = {
@@ -23,7 +23,7 @@ let map: MlMap | undefined
 
 const features = computed(() =>
     Object.values(places.value ?? {})
-        .filter((p) => p.coords)
+        .filter((p) => p.coords && (props.showEmpty || p.charters.length > 0))
         .map((p) => ({
             type: "Feature" as const,
             id: p.id,
@@ -35,9 +35,29 @@ const geojson = computed(() => ({ type: "FeatureCollection" as const, features: 
 
 const cssVar = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 
+/** Grey for 0 charters, then blue (1) -> purple (3) -> pink (5+). Same scale for single places and clusters. */
+const chartersColor = () =>
+    [
+        "case",
+        ["==", ["get", "charters"], 0],
+        cssVar("--map-0"),
+        [
+            "interpolate",
+            ["linear"],
+            ["get", "charters"],
+            1,
+            cssVar("--map-1"),
+            3,
+            cssVar("--map-3"),
+            5,
+            cssVar("--map-5"),
+        ],
+    ] as ExpressionSpecification
+
 /** Source and layers have to be added again after every style change. */
 function addLayers(m: MlMap) {
-    const place = cssVar("--place")
+    const color = chartersColor()
+    const ink = cssVar("--map-ink")
     const surface = cssVar("--surface")
     const text = cssVar("--text")
     const hl = cssVar("--accent")
@@ -55,8 +75,8 @@ function addLayers(m: MlMap) {
         source: "places",
         filter: ["has", "point_count"],
         paint: {
-            "circle-color": place,
-            "circle-opacity": 0.85,
+            "circle-color": color,
+            "circle-opacity": 0.9,
             "circle-radius": ["interpolate", ["linear"], ["get", "point_count"], 2, 14, 50, 26],
             "circle-stroke-width": 2,
             "circle-stroke-color": surface,
@@ -73,7 +93,7 @@ function addLayers(m: MlMap) {
             "text-size": 12,
             "text-allow-overlap": true,
         },
-        paint: { "text-color": surface },
+        paint: { "text-color": ink },
     })
     m.addLayer({
         id: "place-points",
@@ -82,8 +102,8 @@ function addLayers(m: MlMap) {
         filter: ["!", ["has", "point_count"]],
         paint: {
             // area ~ number of charters
-            "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "charters"]], 1, 6, 10, 18],
-            "circle-color": place,
+            "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "charters"]], 0, 5, 1, 6, 10, 18],
+            "circle-color": color,
             "circle-stroke-width": ["case", ["==", ["get", "id"], props.selected ?? ""], 3, 1.5],
             "circle-stroke-color": ["case", ["==", ["get", "id"], props.selected ?? ""], hl, surface],
         },
@@ -202,6 +222,7 @@ onMounted(async () => {
 })
 
 watch(dark, (d) => map?.setStyle(d ? STYLES.dark : STYLES.light))
+watch(geojson, (data) => (map?.getSource("places") as GeoJSONSource | undefined)?.setData(data))
 watch(
     () => props.selected,
     () => {
