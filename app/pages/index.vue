@@ -18,12 +18,10 @@ const { data: places } = await usePlaces()
             <NuxtLink to="/persons" class="entry">
                 <strong>Persons</strong><span>{{ Object.keys(persons ?? {}).length }} persons</span>
             </NuxtLink>
-            <div class="entry disabled" title="Next step">
-                <strong>Map</strong
-                ><span
-                    >{{ Object.values(places ?? {}).filter((p) => p.coords).length }} located places (coming next)</span
-                >
-            </div>
+            <NuxtLink to="/map" class="entry">
+                <strong>Map</strong><span>{{Object.values(places ?? {}).filter((p) => p.coords).length}} located
+                    places (coming next)</span>
+            </NuxtLink>
         </nav>
     </div>
 </template>

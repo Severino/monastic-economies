@@ -62,7 +62,7 @@
     <place xml:id="ravopovuf" type="unknown"><placeName>Ravopovuf</placeName></place>
     <place xml:id="sigolsheim" type="villa"><placeName>Sigolsheim</placeName><location><geo decls="WGS84/y-x">48.135, 7.3</geo></location></place>
     <place xml:id="stBonifatius" type="unknown"><placeName>StBonifatius</placeName></place>
-    <place xml:id="strasbourg" type="city"><placeName>Strasbourg</placeName><location><geo decls="WGS84/y-x">48.5734, 7.7521</geo></location></place>
+    <place xml:id="strasbourg" type="city"><placeName>Strasbourg</placeName><location><geo decls="WGS84/y-x">Point(48.5734 7.7521)</geo></location></place>
   </listPlace>
   <listOrg>
     <org xml:id="fuldaOrg" type="monastery"><orgName>Fulda</orgName></org>

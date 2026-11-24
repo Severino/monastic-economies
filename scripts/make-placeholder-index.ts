@@ -64,7 +64,9 @@ ${persons.map((id) => `    <person xml:id="${id}"><persName><name>${esc(label(id
 ${places
     .map((id) => {
         const k = KNOWN[id]
-        const loc = k ? `<location><geo decls="WGS84/y-x">${k[0]}, ${k[1]}</geo></location>` : ""
+        // both coordinate forms seen in real data: "lat, lon" and WKT "Point(lat lon)"
+        const geo = id === "strasbourg" ? `Point(${k?.[0]} ${k?.[1]})` : `${k?.[0]}, ${k?.[1]}`
+        const loc = k ? `<location><geo decls="WGS84/y-x">${geo}</geo></location>` : ""
         return `    <place xml:id="${id}" type="${k?.[2] ?? "unknown"}"><placeName>${esc(label(id))}</placeName>${loc}</place>`
     })
     .join("\n")}

@@ -13,6 +13,12 @@
     --hl: #ffe98a;
     --hl-strong: #ffd84a;
     --red: #b3261e;
+    /* map: places by number of charters (0, 1, 3, 5+) */
+    --map-0: #b3aea6;
+    --map-1: #8fb4dc;
+    --map-3: #ad93d6;
+    --map-5: #e39cbf;
+    --map-ink: #1f1d1a;
     --font-text: Georgia, "Times New Roman", serif;
     --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
     --header-h: 3.5rem;
@@ -33,6 +39,11 @@
         --hl: #5c4c12;
         --hl-strong: #7a6414;
         --red: #f08a80;
+        --map-0: #6f6a62;
+        --map-1: #86b3e8;
+        --map-3: #b59ae6;
+        --map-5: #eea6c8;
+        --map-ink: #171614;
     }
 }
 :root[data-theme="dark"] {
@@ -49,6 +60,11 @@
     --hl: #5c4c12;
     --hl-strong: #7a6414;
     --red: #f08a80;
+    --map-0: #6f6a62;
+    --map-1: #86b3e8;
+    --map-3: #b59ae6;
+    --map-5: #eea6c8;
+    --map-ink: #171614;
 }
 :root {
     color-scheme: light;
@@ -1023,4 +1039,14 @@ select {
 }
 .entry.disabled {
     opacity: 0.55;
+}
+
+@media (max-width: 30rem) {
+    .site-header {
+        gap: 1rem;
+        padding: 0 0.75rem;
+    }
+    .site-header nav {
+        gap: 0.75rem;
+    }
 }

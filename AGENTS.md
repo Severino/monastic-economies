@@ -29,6 +29,7 @@ UI language: **English**.
 - Index files come from `<data>/indices/` **and** from wherever charters link to them
   (`xi:include/@href`, `text/@xml:base`). The build prints which index files it used.
 - `fixtures/indices/placeholder-indices.xml` is generated stand-in data. Never use it with real data.
+- Coordinates: `<geo decls="WGS84/y-x">` holds "lat, lon" or WKT-like `Point(lat lon)`; the order follows `@decls`.
 - Books are derived from `msDesc/msIdentifier/idno` (book page postponed, keep it in mind).
 - Facsimile images belong to **pages** (`surface`), not charters; one page can belong to several charters.
 - When real data shows a structure the fixtures don't cover, add a pseudonymized example to `fixtures/`.
@@ -87,6 +88,17 @@ UI language: **English**.
   theme toggle (right side of the nav bar) sets `data-theme` on `<html>` and stores it in `localStorage`
   (`monastic-economies:theme`). An inline script in `nuxt.config.ts` applies the stored choice before the first
   paint. Define new colour tokens for both themes (system-dark media query and `[data-theme="dark"]`).
+
+## Map
+
+- `/map` (`PlacesMap.vue`, client-only, MapLibre loaded via dynamic import): all places with coordinates,
+  clustered at low zoom, circle size by number of charters. Data comes from the `places` payload, not from `places.geojson`.
+- Basemap: OpenFreeMap vector styles (`positron` light, `dark` dark; free, no API key), switched with the site theme
+  (`useDarkTheme`). Layers are re-added on every `style.load`. Layer colours come from the CSS tokens.
+- The selected place is `?place=<id>` (push); a side panel (bottom sheet on phones) lists its charters.
+- Colour by number of charters: grey for 0, then blue (1) → purple (3) → pink (5+), tokens `--map-0/1/3/5`
+  (clusters use the summed count). Places without charters are hidden by default; the control box (bottom right)
+  has the legend and a toggle for them, stored in `localStorage` (`monastic-economies:map-show-empty`).
 
 ## Code style
 
