@@ -74,6 +74,11 @@ ${persons.map((id) => `    <person xml:id="${id}"${sex(id)}><persName><name>${es
     <relation name="sibling" type="family" mutual="#theothard1 #eburswind1"/>
     <relation name="lord" active="#baugulf1" passive="#uto1"/>
     <relation name="spouse" type="family" mutual="#hugo1 #ratlind1"/>
+    <relation name="parent" type="family" active="#hugo1 #ratlind1" passive="#odo1 #richar1"/>
+    <relation name="parent" type="family" active="#theothard1" passive="#hugo1"/>
+    <relation name="sibling" type="family" mutual="#odo1 #richar1"/>
+    <relation name="spouse" type="family" mutual="#odo1 #wulfgund1"/>
+    <relation name="parent" type="family" active="#odo1 #wulfgund1" passive="#wilo1"/>
   </listRelation>
   <listPlace>
 ${places

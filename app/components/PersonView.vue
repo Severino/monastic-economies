@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Eye, EyeOff, Link2Off, List, Share2 } from "lucide-vue-next"
+import { Eye, EyeOff, Link2Off, List, Network, Share2 } from "lucide-vue-next"
 import type { EgoNeighbor } from "~/composables/useEgoNetwork"
 
 const props = defineProps<{ id: string }>()
@@ -14,9 +14,12 @@ const entries = computed(() => (catalog.value ?? []).filter((e) => roles.value[e
 const route = useRoute()
 const router = useRouter()
 const preview = computed(() => (route.query.preview as string) || entries.value[0]?.id)
-// ---- Charters | Graph (URL: ?view=graph) ---------------------------------------
-const view = computed(() => (route.query.view === "graph" ? "graph" : "charters"))
-const setView = (v: string) => router.push({ query: { ...route.query, view: v === "graph" ? "graph" : undefined } })
+// ---- Charters | Graph | Relations (URL: ?view=graph, ?view=relations) ------------------
+type View = "charters" | "graph" | "relations"
+const view = computed<View>(() =>
+    route.query.view === "graph" || route.query.view === "relations" ? route.query.view : "charters",
+)
+const setView = (v: View) => router.push({ query: { ...route.query, view: v === "charters" ? undefined : v } })
 
 const { data: neighbors } = await useEgoNetwork(() => props.id)
 const nameOf = (id: string) => persons.value?.[id]?.name ?? id
@@ -24,7 +27,20 @@ const altOf = (id: string) => {
     const alt = persons.value?.[id]?.altNames ?? []
     return alt.length ? `also: ${alt.join(", ")}` : undefined
 }
+const { data: tree } = await useRelationTree(() => props.id)
+// hovered (list or diagram) and selected (click in the diagram) persons: highlighted in both
 const hovered = ref<string>()
+const selected = ref<string>()
+watch(
+    () => [props.id, view.value],
+    () => (selected.value = undefined),
+)
+// a person selected in the diagram scrolls its row into view
+watch(selected, async (id) => {
+    if (!id) return
+    await nextTick()
+    document.querySelector(`[data-person="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" })
+})
 
 // steps from the centre person (URL: ?depth=2), 1–5
 const MAX_DEPTH = 5
@@ -45,16 +61,12 @@ const hideUnrelated = computed(() => route.query.unrelated === "hide")
 const toggleUnrelated = () =>
     router.push({ query: { ...route.query, unrelated: hideUnrelated.value ? undefined : "hide" } })
 const graphQuery = computed(() => ({
-    view: "graph",
+    view: view.value === "charters" ? undefined : view.value,
     depth: depth.value > 1 ? String(depth.value) : undefined,
     hide: hidden.value.filter((h) => h !== props.id).join(",") || undefined,
     unrelated: hideUnrelated.value ? "hide" : undefined,
 }))
-function openPerson(id: string, newTab = false) {
-    const to = { path: `/persons/${id}`, query: graphQuery.value }
-    if (newTab) window.open(router.resolve(to).href, "_blank")
-    else router.push(to)
-}
+const openPerson = (id: string) => router.push({ path: `/persons/${id}`, query: graphQuery.value })
 // list next to the graph: RELATED (explicit relation), UNRELATED (only shared charters), HIDDEN
 const byCharters = (a: EgoNeighbor, b: EgoNeighbor) =>
     b.charters.length - a.charters.length || nameOf(a.id).localeCompare(nameOf(b.id))
@@ -72,6 +84,31 @@ const sections = computed(() => {
             .sort((a, b) => nameOf(a.id).localeCompare(nameOf(b.id))),
     }
 })
+// list next to the relation tree: everyone in it, by generation, with their relations in the tree
+const treeRows = computed(() => {
+    const t = tree.value
+    if (!t) return []
+    const level = new Map(t.levels.map((l) => [l.id, l.level]))
+    return t.levels
+        .filter((l) => l.id !== props.id)
+        .sort((a, b) => a.level - b.level || nameOf(a.id).localeCompare(nameOf(b.id)))
+        .map(({ id }) => ({
+            id,
+            relations: t.links
+                .filter((l) => l.a === id || l.b === id)
+                .map((l) => {
+                    const other = nameOf(l.a === id ? l.b : l.a)
+                    const names = l.names.join(", ")
+                    return !l.directed
+                        ? `${names} of ${other}`
+                        : l.a === id
+                          ? `${names} of ${other}`
+                          : `has ${names} ${other}`
+                }),
+            level: level.get(id)!,
+        }))
+})
+const treeSize = computed(() => Math.max(0, (tree.value?.levels.length ?? 0) - 1))
 const stepCounts = ref<number[]>([])
 const shown = computed(() => stepCounts.value.reduce((a, b) => a + b, 0))
 
@@ -104,6 +141,9 @@ const sexIcon = (s?: string) => {
                 <button type="button" :class="{ active: view === 'graph' }" @click="setView('graph')">
                     <Share2 :size="16" /> Graph ({{ neighbors?.length ?? 0 }})
                 </button>
+                <button type="button" :class="{ active: view === 'relations' }" @click="setView('relations')">
+                    <Network :size="16" /> Relations ({{ treeSize }})
+                </button>
             </div>
 
             <template v-if="view === 'graph'">
@@ -135,8 +175,10 @@ const sexIcon = (s?: string) => {
                                 v-for="n in sec.items"
                                 :key="n.id"
                                 class="neighbor-row"
+                                :data-person="n.id"
                                 :class="{
-                                    selected: n.id === hovered,
+                                    hovered: n.id === hovered,
+                                    active: n.id === selected,
                                     off: sec.key === 'hidden' || (sec.key === 'unrelated' && hideUnrelated),
                                 }"
                                 @mouseenter="hovered = n.id"
@@ -169,6 +211,27 @@ const sexIcon = (s?: string) => {
                         </ul>
                     </template>
                 </template>
+            </template>
+            <template v-else-if="view === 'relations'">
+                <p v-if="!treeRows.length" class="muted">No explicit relations to other persons.</p>
+                <ul v-else class="neighbor-list">
+                    <li
+                        v-for="r in treeRows"
+                        :key="r.id"
+                        class="neighbor-row"
+                        :data-person="r.id"
+                        :class="{ hovered: r.id === hovered, active: r.id === selected }"
+                        @mouseenter="hovered = r.id"
+                        @mouseleave="hovered = undefined"
+                    >
+                        <NuxtLink :to="{ path: `/persons/${r.id}`, query: graphQuery }" class="neighbor">
+                            <span class="name" :class="sexOf(persons?.[r.id]?.sex)" :title="altOf(r.id)">{{
+                                nameOf(r.id)
+                            }}</span>
+                            <span class="relations">{{ r.relations.join(", ") }}</span>
+                        </NuxtLink>
+                    </li>
+                </ul>
             </template>
             <template v-else>
                 <ul class="charter-list compact">
@@ -225,18 +288,46 @@ const sexIcon = (s?: string) => {
                     :highlight="hovered"
                     :hidden="hidden"
                     :hide-unrelated="hideUnrelated"
+                    :selected="selected"
                     @hover="hovered = $event"
-                    @select="openPerson"
+                    @select="selected = $event"
+                    @open="openPerson"
                     @hide="toggleHidden"
                     @stats="stepCounts = $event"
                 />
             </ClientOnly>
             <p class="graph-legend muted small">
-                Click a person to open them; Alt-click hides them (and everyone reached only through them). Rings: steps
-                from {{ person.name }}; the more charters a person shares, the nearer it sits. Lines: links of
-                {{ person.name }}, and from step 2 on the link each person was reached through. Thickness: shared
-                charters, hover a line for the count. <span class="accent">Coloured lines</span>: explicit relations
-                from the index, arrow = direction.
+                Drag a person to move them, click to select, Ctrl/⌘-click to open, Alt-click to hide (with everyone
+                reached only through them). Rings: steps from {{ person.name }}; the more charters a person shares, the
+                nearer it sits. Lines: links of {{ person.name }}, and from step 2 on the link each person was reached
+                through. Thickness: shared charters. <span class="accent">Coloured lines</span>: explicit relations from
+                the index, arrow = direction.
+            </p>
+        </section>
+        <section v-else-if="view === 'relations'" class="pane graph-pane">
+            <div class="graph-toolbar">
+                <span class="muted small"
+                    >{{ treeSize }} related person{{ treeSize === 1 ? "" : "s" }}, explicit relations only</span
+                >
+            </div>
+            <p v-if="!treeSize" class="muted graph-empty">{{ person.name }} has no explicit relations in the index.</p>
+            <ClientOnly v-else>
+                <RelationTree
+                    :id="id"
+                    :persons="persons ?? {}"
+                    :tree="tree!"
+                    :highlight="hovered"
+                    :selected="selected"
+                    @hover="hovered = $event"
+                    @select="selected = $event"
+                    @open="openPerson"
+                />
+            </ClientOnly>
+            <p class="graph-legend muted small">
+                All persons connected to {{ person.name }} through relations from the index, followed recursively;
+                shared charters are ignored. Arrows point from the active to the passive side of a relation (e.g. lord →
+                vassal), which also stands one row lower; mutual relations side by side. Drag a person to move them,
+                click to select, Ctrl/⌘-click to open.
             </p>
         </section>
         <section v-else class="pane preview">

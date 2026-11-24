@@ -15,7 +15,7 @@ export interface EgoNeighbor {
     relations: EgoRelation[]
 }
 
-interface RelationsFile {
+export interface RelationsFile {
     explicit: Relation[]
     cooccurrence: { source: Id; target: Id; charters: CharterId[] }[]
 }

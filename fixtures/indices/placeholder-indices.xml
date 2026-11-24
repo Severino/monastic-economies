@@ -48,6 +48,11 @@
     <relation name="sibling" type="family" mutual="#theothard1 #eburswind1"/>
     <relation name="lord" active="#baugulf1" passive="#uto1"/>
     <relation name="spouse" type="family" mutual="#hugo1 #ratlind1"/>
+    <relation name="parent" type="family" active="#hugo1 #ratlind1" passive="#odo1 #richar1"/>
+    <relation name="parent" type="family" active="#theothard1" passive="#hugo1"/>
+    <relation name="sibling" type="family" mutual="#odo1 #richar1"/>
+    <relation name="spouse" type="family" mutual="#odo1 #wulfgund1"/>
+    <relation name="parent" type="family" active="#odo1 #wulfgund1" passive="#wilo1"/>
   </listRelation>
   <listPlace>
     <place xml:id="alsace" type="region"><placeName>Alsace</placeName><location><geo decls="WGS84/y-x">48.3, 7.45</geo></location></place>

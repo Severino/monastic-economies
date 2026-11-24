@@ -104,7 +104,7 @@ UI language: **English**.
 
 ## Person graph
 
-- The person page toggles **Charters | Graph** (`?view=graph`, pushes a history entry).
+- The person page toggles **Charters | Graph | Relations** (`?view=graph`, `?view=relations`, pushes a history entry).
 - Graph = network around the person, **1–5 steps** (`?depth=`, default 1). A link is co-occurrence in a charter
   or an explicit `relation` from the index. Drawn lines: all links of the centre person, and from step 2 on
   only the link each person was reached through (all links would be a hairball: every charter is a clique).
@@ -112,18 +112,27 @@ UI language: **English**.
   each person on the ring of its step, pulled inwards by the number of charters it shares with the person it was
   reached from (more shared charters = nearer the centre person); collision keeps circles apart; it starts from a radial
   tree so subtrees stay in their sector. The frame always keeps the centre person in the middle.
-- Line thickness = number of shared charters (square-root scale; hover a line for the count). Explicit relations
-  are accent-coloured lines labelled with the relation name; directed ones get an arrow head (active → passive),
+- Line thickness = number of shared charters (square-root scale). Explicit relations
+  are accent-coloured lines labelled with the relation name (on a solid `--surface` background); directed ones get an arrow head (active → passive),
   at both ends when relations go both ways.
 - Circles by `@sex`: `--male` blue, `--female` pink, `--sex-unknown` grey; the centre person in `--accent`.
-- Click a person (circle or name) to open them, Ctrl/⌘-click opens a new tab, **Alt-click hides** them (`?hide=a,b`,
-  kept when moving to another person); hidden persons are not followed to further steps. Hovering a circle or its name
-  highlights the person and its lines; so does hovering a row in the list.
+- Both diagrams share `usePersonSigma`: drag a person (circle or name) to move it, click selects it (click again or on
+  the background to clear; not in the URL), **Ctrl/⌘-click opens** the person, **Alt-click hides** them in the graph
+  (`?hide=a,b`, kept when moving to another person; hidden persons are not followed to further steps). Hovered,
+  selected and list-hovered persons are highlighted with their lines; their list row gets a subtle border (selected
+  rows also a background and scroll into view).
+- Labels: the first name only, centred below the circle. On highlight, alternate spellings appear below the name in
+  smaller type (`PersonTips`, an HTML box over the label; sigma's label attachments made other labels vanish).
 - "Hide unrelated" (`?unrelated=hide`, push) follows only explicit relations, so persons that only share charters drop out.
 - The list next to the graph has three sections: **Related** (explicit relation), **Unrelated** (only shared charters),
   **Hidden** (all of `?hide=`, with "Show all"); each row has an eye toggle and a dot in the person's graph colour.
 - Names: the first `<name>` is the name; further `<name>`s are alternate spellings with no extra information, shown
-  only on hover (graph tooltip, `title` in lists) and matched by the persons search.
+  only on hover (diagram label box, `title` in lists) and matched by the persons search.
+- **Relations** view (`RelationTree.vue`, data from `useRelationTree` while prerendering): explicit relations only,
+  followed recursively from the person, charters ignored. Family-tree layout: one row per generation, the passive
+  side of a directed relation one row below the active side (arrow active → passive), mutual relations in the same
+  row; persons joined in a row (siblings, spouses) stay together as a chain; rows ordered by barycentre sweeps. The
+  list next to it shows everyone in the tree with their relations ("parent of Odo", "has parent Hugo").
 - sigma 4: options are `{ primitives, styles, settings }` (settings are nested!). Sizes are pixels only with
   `itemSizesReference: "screen"`; the v4 default (`"positions"`) blows every circle up to fill the canvas.
 - The graph reads `network.json` (compact, persons only, written by the build) in the browser. The list of direct
