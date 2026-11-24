@@ -38,13 +38,12 @@ export function formatDateHuman(d?: { when?: string; from?: string; to?: string 
     if (d.when) return format(d.when)
     if (d.from || d.to) return `${d.from ? format(d.from) : "?"} – ${d.to ? format(d.to) : "?"}`
     return ""
-
 }
 
 export function formatDate(d?: { when?: string; from?: string; to?: string }) {
     if (!d) return ""
     const format = (s: string) => s.replace(/^0+/, "")
-    if (d.when) return format(d.when);
+    if (d.when) return format(d.when)
     if (d.from || d.to) return `${d.from ? format(d.from) : "?"} – ${d.to ? format(d.to) : "?"}`
     return ""
 }

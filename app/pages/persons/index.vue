@@ -36,36 +36,15 @@ function sexOf(s?: string) {
 <template>
     <div class="container">
         <h1>Persons</h1>
-        <input
-            v-model="filter"
-            type="search"
-            placeholder="Filter by name…"
-            aria-label="Filter persons"
-            class="wide"
-        />
+        <input v-model="filter" type="search" placeholder="Filter by name…" aria-label="Filter persons" class="wide" />
         <p class="muted">{{ list.length }} persons</p>
-        <nav
-            v-if="groups.length > 1"
-            class="letter-nav"
-            aria-label="Jump to letter"
-        >
-            <a
-                v-for="[letter] in groups"
-                :key="letter"
-                :href="`#letter-${letter}`"
-            >{{ letter }}</a>
+        <nav v-if="groups.length > 1" class="letter-nav" aria-label="Jump to letter">
+            <a v-for="[letter] in groups" :key="letter" :href="`#letter-${letter}`">{{ letter }}</a>
         </nav>
-        <section
-            v-for="[letter, items] in groups"
-            :key="letter"
-            class="letter-group"
-        >
+        <section v-for="[letter, items] in groups" :key="letter" class="letter-group">
             <h2 :id="`letter-${letter}`">{{ letter }}</h2>
             <ul class="person-list">
-                <li
-                    v-for="p in items"
-                    :key="p.id"
-                >
+                <li v-for="p in items" :key="p.id">
                     <component
                         :is="sexOf(p.sex).icon"
                         :size="15"
@@ -76,17 +55,16 @@ function sexOf(s?: string) {
                     />
                     <NuxtLink :to="`/persons/${p.id}`">{{ p.name }}</NuxtLink>
                     <span class="muted small">
-                        {{ p.charters.length }} charter{{ p.charters.length === 1 ? "" : "s" }}</span>
+                        {{ p.charters.length }} charter{{ p.charters.length === 1 ? "" : "s" }}</span
+                    >
                 </li>
             </ul>
         </section>
     </div>
 </template>
 
-
 <style lang="css" scoped>
-    a {
-        text-decoration: none;
-    }
-
+a {
+    text-decoration: none;
+}
 </style>

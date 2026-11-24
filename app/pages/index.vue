@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import NavigationButton from "~/components/Buttons/NavigationButton.vue"
+import charterPlaceholder from "~/assets/images/charter-ai-placeholder.png"
+import personsPlaceholder from "~/assets/images/persons-ai-placeholder.png"
+import mapPlaceholder from "~/assets/images/map-ai-placeholder.png"
+
 const { data: catalog } = await useCatalog()
 const { data: persons } = await usePersons()
 const { data: places } = await usePlaces()
@@ -12,18 +17,19 @@ const { data: places } = await usePlaces()
             Farfa, with transcriptions, persons, places and legal actions.
         </p>
         <nav class="entry-points">
-            <NuxtLink to="/charters" class="entry">
-                <strong>Charters</strong><span>{{ catalog?.length ?? 0 }} charters, searchable and filterable</span>
-            </NuxtLink>
-            <NuxtLink to="/persons" class="entry">
-                <strong>Persons</strong><span>{{ Object.keys(persons ?? {}).length }} persons</span>
-            </NuxtLink>
-            <NuxtLink to="/map" class="entry">
-                <strong>Map</strong
-                ><span
-                    >{{ Object.values(places ?? {}).filter((p) => p.coords).length }} located places (coming next)</span
-                >
-            </NuxtLink>
+            <NavigationButton text="Charters" to="/charters" :img="charterPlaceholder" :count="catalog?.length ?? 0" />
+            <NavigationButton
+                text="Persons"
+                to="/persons"
+                :img="personsPlaceholder"
+                :count="Object.keys(persons ?? {}).length"
+            />
+            <NavigationButton
+                text="Map"
+                to="/map"
+                :img="mapPlaceholder"
+                :count="Object.values(places ?? {}).filter((p) => p.coords).length"
+            />
         </nav>
     </div>
 </template>
