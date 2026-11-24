@@ -71,9 +71,8 @@ export function readIndices(root: El, into: Indices, issue: (m: string) => void)
         let coords: [number, number] | undefined
         if (geo) {
             const decls = attr(geo, "decls") ?? "WGS84/y-x"
-            const nums = text(geo)
-                .split(/[\s,]+/)
-                .map(Number)
+            // "48.58, 7.74", "48.58 7.74" or WKT "Point(48.58 7.74)"; the order always follows @decls
+            const nums = (text(geo).match(/[-+]?\d+(?:\.\d+)?/g) ?? []).map(Number)
             if (nums.length === 2 && nums.every(Number.isFinite)) {
                 // "y-x" = "lat, lon"; GeoJSON wants [lon, lat]
                 coords = /y-x/.test(decls) ? [nums[1], nums[0]] : [nums[0], nums[1]]

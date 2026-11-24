@@ -29,6 +29,7 @@ UI language: **English**.
 - Index files come from `<data>/indices/` **and** from wherever charters link to them
   (`xi:include/@href`, `text/@xml:base`). The build prints which index files it used.
 - `fixtures/indices/placeholder-indices.xml` is generated stand-in data. Never use it with real data.
+- Coordinates: `<geo decls="WGS84/y-x">` holds "lat, lon" or WKT-like `Point(lat lon)`; the order follows `@decls`.
 - Books are derived from `msDesc/msIdentifier/idno` (book page postponed, keep it in mind).
 - Facsimile images belong to **pages** (`surface`), not charters; one page can belong to several charters.
 - When real data shows a structure the fixtures don't cover, add a pseudonymized example to `fixtures/`.
