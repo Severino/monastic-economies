@@ -27,12 +27,13 @@ export const orgName = (o?: Org) => o?.names[0]?.name ?? "?"
 export function formatDate(d?: { when?: string; from?: string; to?: string }) {
     if (!d) return ""
     const f = (s: string) => s.replace(/^0+/, "")
-    if (d.when) return new Date(d.when).toLocaleDateString("en", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        weekday: "short",
-    })
+    if (d.when)
+        return new Date(d.when).toLocaleDateString("en", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            weekday: "short",
+        })
     if (d.from || d.to) return `${d.from ? f(d.from) : "?"} – ${d.to ? f(d.to) : "?"}`
     return ""
 }

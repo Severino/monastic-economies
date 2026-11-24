@@ -66,7 +66,7 @@ interface Charter {
   locus: { from: string; to: string } // "2v18" -> Seite 2v, Zeile 18
   language: string
   summary?: Node[]
-  physDesc: { hand?: string; script?: Node[]; additions?: Node[] }
+  physDesc: { hand?: string; script?: Node[]; decoration?: { type?: string; note: Node[] }[]; additions?: Node[] }
   pages: PageRef[] // aus facsimile, in Reihenfolge
   body: Node[] // Textbaum, siehe unten
   notes: Record<string, Node[]> // fn-ID -> Fußnote (listAnnotation)

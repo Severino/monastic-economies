@@ -115,6 +115,7 @@ export function parseCharter(tei: El, ctx: CharterContext): Charter {
             repository: text(child(msIdent, "repository")) || undefined,
             idno: text(child(msIdent, "idno")) || undefined,
             name: text(child(msIdent, "msName")) || undefined,
+            altIdno: text(path(msIdent, "altIdentifier", "idno")) || undefined,
         },
         edition: {
             publication: tree(path(fileDesc, "publicationStmt"), ctx),
@@ -133,6 +134,10 @@ export function parseCharter(tei: El, ctx: CharterContext): Charter {
         physDesc: {
             hand: text(path(physDesc, "handDesc", "handNote")) || undefined,
             script: tree(path(physDesc, "scriptDesc", "scriptNote"), ctx),
+            decoration: children(child(physDesc, "decoDesc"), "decoNote").map((d) => ({
+                type: attr(d, "type"),
+                note: tree(d, ctx),
+            })),
             additions: tree(child(physDesc, "additions"), ctx),
         },
         pages,

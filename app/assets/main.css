@@ -474,11 +474,11 @@ h2 {
     }
 }
 
-/* glossary: slides in over the facsimile */
+/* side panels (glossary, source description): slide in over the facsimile */
 .facsimile {
     position: relative;
 }
-.glossary {
+.side-panel {
     position: absolute;
     inset: 0;
     z-index: 5;
@@ -488,7 +488,7 @@ h2 {
     padding: 1rem 1.25rem 2rem;
     box-shadow: 4px 0 16px rgb(0 0 0 / 0.08);
 }
-.glossary-head {
+.side-panel-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -499,10 +499,10 @@ h2 {
     padding: 1rem 1.25rem 0.5rem;
     border-bottom: 1px solid var(--border);
 }
-.glossary-head h2 {
+.side-panel-head h2 {
     margin: 0;
 }
-.glossary h3 {
+.side-panel h3 {
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -536,7 +536,7 @@ h2 {
     opacity: 0.6;
 }
 @media (max-width: 899px) {
-    .glossary {
+    .side-panel {
         position: fixed;
         inset: var(--header-h) 0 0 0;
     }
@@ -703,6 +703,52 @@ a.tei-entity:hover {
 .tei-notes .back {
     text-decoration: none;
     margin-left: 0.3em;
+}
+
+/* source description panel (sourceDesc) */
+.source-desc p {
+    margin: 0.3rem 0;
+}
+.source-desc dl {
+    display: grid;
+    grid-template-columns: 10.5rem 1fr;
+    gap: 0.4rem 1.25rem;
+    margin: 0.3rem 0;
+}
+.source-desc dl > div {
+    display: contents;
+}
+.source-desc dt {
+    color: var(--muted);
+}
+.source-desc dd {
+    margin: 0;
+}
+.source-desc .tei-ab,
+.source-desc .tei-p {
+    display: block;
+}
+.source-desc .tei-list,
+.source-desc ul.plain {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+.source-desc .tei-item + .tei-item,
+.source-desc ul.plain li + li {
+    margin-top: 0.3rem;
+}
+.source-desc .tei-locus {
+    color: var(--muted);
+}
+@media (max-width: 599px) {
+    .source-desc dl {
+        grid-template-columns: 1fr;
+        gap: 0.1rem;
+    }
+    .source-desc dd {
+        margin-bottom: 0.5rem;
+    }
 }
 
 .entities ul {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, BookText, CalendarDays, Languages, Library, WrapText, X } from "lucide-vue-next"
+import { BookOpen, BookText, CalendarDays, Languages, Library, ScrollText, WrapText, X } from "lucide-vue-next"
 
 // Self-contained view (loads its own data by id) so it can later be rendered
 // as a route *or* as a layer of the page stack.
@@ -152,7 +152,7 @@ function onDocClick(e: MouseEvent) {
         !t.closest(".action-badge") &&
         !t.closest(".tei-text") &&
         !t.closest(".charter-head") &&
-        !t.closest(".glossary")
+        !t.closest(".side-panel")
     )
         setCurrent(null)
 }
@@ -186,8 +186,11 @@ watch(
     },
 )
 
-// ---- glossary panel (persons, places, organisations of this charter) ------------
-const glossaryOpen = ref(false)
+// ---- side panels over the facsimile: glossary (persons, places, organisations of
+// this charter) and source description (sourceDesc). One at a time.
+type Panel = "glossary" | "source"
+const panel = ref<Panel | null>(null)
+const togglePanel = (p: Panel) => (panel.value = panel.value === p ? null : p)
 
 // ---- manuscript ------------------------------------------------------------------
 const manuscriptLine = computed(() => {
@@ -220,15 +223,10 @@ const entities = computed(() => {
         <section class="pane facsimile" aria-label="Facsimile">
             <FacsimileViewer :pages="charter.pages" :current="currentPage" @select="selectPage" />
             <Transition name="slide">
-                <aside v-if="glossaryOpen" id="glossary" class="glossary entities" aria-label="Glossary">
-                    <div class="glossary-head">
+                <aside v-if="panel === 'glossary'" id="glossary" class="side-panel entities" aria-label="Glossary">
+                    <div class="side-panel-head">
                         <h2>Glossary</h2>
-                        <button
-                            type="button"
-                            class="icon-btn"
-                            aria-label="Close glossary"
-                            @click="glossaryOpen = false"
-                        >
+                        <button type="button" class="icon-btn" aria-label="Close glossary" @click="panel = null">
                             <X :size="18" aria-hidden="true" />
                         </button>
                     </div>
@@ -259,6 +257,22 @@ const entities = computed(() => {
                             </li>
                         </ul>
                     </div>
+                </aside>
+            </Transition>
+            <Transition name="slide">
+                <aside v-if="panel === 'source'" id="source" class="side-panel" aria-label="Source description">
+                    <div class="side-panel-head">
+                        <h2>Source description</h2>
+                        <button
+                            type="button"
+                            class="icon-btn"
+                            aria-label="Close source description"
+                            @click="panel = null"
+                        >
+                            <X :size="18" aria-hidden="true" />
+                        </button>
+                    </div>
+                    <SourceDescription :charter="charter" />
                 </aside>
             </Transition>
         </section>
@@ -329,13 +343,24 @@ const entities = computed(() => {
                     <button
                         type="button"
                         class="legend-item toggle-btn glossary-toggle"
-                        :class="{ off: !glossaryOpen }"
-                        :aria-pressed="glossaryOpen"
+                        :class="{ off: panel !== 'glossary' }"
+                        :aria-pressed="panel === 'glossary'"
                         aria-controls="glossary"
-                        @click="glossaryOpen = !glossaryOpen"
+                        @click="togglePanel('glossary')"
                     >
                         <BookText :size="15" aria-hidden="true" />
                         Glossary
+                    </button>
+                    <button
+                        type="button"
+                        class="legend-item toggle-btn source-toggle"
+                        :class="{ off: panel !== 'source' }"
+                        :aria-pressed="panel === 'source'"
+                        aria-controls="source"
+                        @click="togglePanel('source')"
+                    >
+                        <ScrollText :size="15" aria-hidden="true" />
+                        Source
                     </button>
                 </div>
             </header>

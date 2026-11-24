@@ -81,8 +81,9 @@ UI language: **English**.
 - Header is sticky. First row: collection and charter number left; manuscript shelfmark, date, folios and language
   right, each as a Lucide icon + plain text (no badge styling; language uppercase).
 - Below the transcript a footer shows manuscript (`msIdentifier`), `respStmt`, `funder` and `publicationStmt`.
-- Legend toggles highlighting per category; "Line breaks" and "Glossary" are toggle buttons
-  (coloured when on, grey when off). The glossary slides in over the facsimile.
+- Legend toggles highlighting per category; "Line breaks", "Glossary" and "Source" are toggle buttons
+  (coloured when on, grey when off). Glossary and Source (all `sourceDesc` fields: summary, charter, manuscript,
+  physical description) are side panels that slide in over the facsimile; only one is open at a time.
 - The facsimile pane shows one page, filling the pane; a pager with page tiles at the bottom
   (arrow keys when focused) switches pages and follows the transcript scroll.
 - Colours are CSS custom properties on `:root`; reuse them. Dark theme: follows the system by default; the
@@ -130,7 +131,8 @@ UI language: **English**.
 
 ## Workflow
 
-- Work on a branch and open a pull request against `main`.
+- Work on a branch and open a pull request against `main`. Branch names say what the change is:
+  `feat-<topic>` for features, `fix-<topic>` for bugs (e.g. `feat-map`, `fix-missing-charter-description`).
 - Before pushing: `npm run format:check` and `npm run generate:sample` (must prerender without errors);
   check UI changes in a browser on desktop and phone width.
 - Never commit real data, `build-report.json` or `public/data`.
