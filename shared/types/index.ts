@@ -125,6 +125,14 @@ export interface Relation {
     mutual?: Id[]
 }
 
+/** network.json: persons only. */
+export interface PersonNetwork {
+    /** co-occurrence: [person, person, number of shared charters] */
+    edges: [Id, Id, number][]
+    /** explicit relations: [a, b, name, directed (1 = a is active, b passive) or mutual (0)] */
+    relations: [Id, Id, string, 0 | 1][]
+}
+
 export interface Book {
     id: string
     idno: string
