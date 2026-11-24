@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Person, PersonNetwork } from "#shared/types"
+import type { LiveNode } from "~/composables/useLiveLayout"
 
 // Network around one person, up to `depth` steps away. Positions come from a force simulation
 // (d3-force): each step is a ring, and within its ring a person sits nearer the centre the more
@@ -39,8 +40,11 @@ const view = usePersonSigma(container, {
         if (id !== props.id) emit("hide", id)
     },
     hover: (id) => emit("hover", id),
-    drag: onDrag,
+    drag: (id, phase) => layout.drag(id, phase),
+    unpin: (id) => layout.unpin(id),
 })
+// live layout; dragged persons stay pinned (per centre person, remembered in localStorage)
+const layout = useLiveLayout<SimNode, SimLink>(() => `graph:${props.id}`)
 
 // ---- network (fetched once per visit) --------------------------------------------
 interface Link {
@@ -132,16 +136,9 @@ function radialTree(step: Map<string, number>, parent: Map<string, string>, ring
     return pos
 }
 
-interface SimNode {
-    id: string
-    x: number
-    y: number
-    fx?: number | null
-    fy?: number | null
+interface SimNode extends LiveNode {
     /** target distance from the centre */
     r: number
-    /** collision radius: circle and the name below it */
-    radius: number
 }
 interface SimLink {
     source: string | SimNode
@@ -153,27 +150,10 @@ interface SimLink {
 // ---- live force simulation (d3-force), graph units = pixels while the graph fits the pane ----------
 // It keeps running while a person is dragged, so the others make room; when persons are hidden or the
 // depth changes, everyone already shown starts where they were and the rest settles around them.
-let sim: import("d3-force").Simulation<SimNode, SimLink> | undefined
 let simNodes = new Map<string, SimNode>()
-let shownGraph: import("graphology").default | undefined
 /** last positions, kept across re-renders of the same centre person */
 let lastPos = new Map<string, { x: number; y: number }>()
 let lastCentre = ""
-
-function onDrag(id: string, phase: "start" | "move" | "end") {
-    const n = simNodes.get(id)
-    if (!sim || !n || !shownGraph) return
-    if (phase === "end") {
-        // the centre person stays pinned to the middle; everyone else is released
-        if (id !== props.id) n.fx = n.fy = null
-        sim.alphaTarget(0)
-        return
-    }
-    const a = shownGraph.getNodeAttributes(id)
-    n.fx = a.x
-    n.fy = a.y
-    if (phase === "start") sim.alphaTarget(0.3).restart()
-}
 
 let renderId = 0
 async function render() {
@@ -196,14 +176,8 @@ async function render() {
     for (const a of step.keys())
         for (const [b, l] of adj.get(a) ?? []) if (step.has(b) && l.relations.length && a < b) addPair(a, b)
     const relationText = (a: string, b: string) =>
-        [
-            ...new Set(
-                adj
-                    .get(a)!
-                    .get(b)!
-                    .relations.map((r) => r.name),
-            ),
-        ].join(", ")
+        [...new Set((adj.get(a)?.get(b)?.relations ?? []).map((r) => r.name))].join(", ")
+    const related = (a: string, b: string) => !!adj.get(a)?.get(b)?.relations.length
 
     // ring distance; a line with a relation label is at least as long as the label needs
     const sizeOf = (s: number) => (s === 0 ? 14 : Math.max(4, 10 - 2 * s))
@@ -229,7 +203,7 @@ async function render() {
     if (lastCentre !== props.id) lastPos = new Map()
     lastCentre = props.id
     const start = radialTree(step, parent, ring)
-    sim?.stop()
+    layout.stop()
     simNodes = new Map(
         [...step].map(([n, s]) => [
             n,
@@ -241,8 +215,8 @@ async function render() {
             },
         ]),
     )
-    const centre = simNodes.get(props.id)!
-    centre.fx = centre.fy = 0
+    simNodes.get(props.id)!.anchor = { x: 0, y: 0 }
+    layout.applyPins(simNodes)
     const links: SimLink[] = [...pairs.values()].map(([a, b]) => {
         const related = !!relationText(a, b)
         const fromCentre = a === props.id || b === props.id
@@ -254,7 +228,7 @@ async function render() {
             strength: related ? (fromCentre ? 0.3 : 1) : fromCentre ? 0.02 : 0.08,
         }
     })
-    sim = d3
+    const sim = d3
         .forceSimulation([...simNodes.values()])
         .force(
             "radial",
@@ -262,6 +236,15 @@ async function render() {
         )
         .force("collide", d3.forceCollide<SimNode>((n) => n.radius).iterations(3))
         .force("charge", d3.forceManyBody<SimNode>().strength(-120).distanceMax(300))
+        // persons in islands keep clear of everyone they have no relation with
+        .force(
+            "apart",
+            forceApart<SimNode>(
+                (a, b) => a !== props.id && b !== props.id && (inIsland.has(a) || inIsland.has(b)) && !related(a, b),
+                40,
+                0.5,
+            ),
+        )
         .force(
             "link",
             d3
@@ -319,12 +302,7 @@ async function render() {
             relations: relationText(a, b),
         })
     }
-    shownGraph = graph
-    sim.on("tick", () => {
-        graph.updateEachNodeAttributes((n, a) => {
-            const p = simNodes.get(n)!
-            return { ...a, x: p.x, y: p.y }
-        })
+    layout.attach(sim, simNodes, graph, () => {
         for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })
     })
     for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })
@@ -347,10 +325,7 @@ watch(
 watch(() => [props.id, props.depth, props.hidden.join(), props.hideUnrelated], render)
 
 onMounted(render)
-onBeforeUnmount(() => {
-    renderId++
-    sim?.stop()
-})
+onBeforeUnmount(() => renderId++)
 </script>
 
 <template>

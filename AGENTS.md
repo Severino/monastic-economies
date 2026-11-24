@@ -113,19 +113,26 @@ UI language: **English**.
   each person on the ring of its step, pulled inwards by the number of charters it shares with the person it was
   reached from (more shared charters = nearer the centre person); collision keeps circles apart; it starts from a radial
   tree so subtrees stay in their sector. The frame always keeps the centre person in the middle.
-- The simulation stays live: dragging a person pins it and the others follow; a changed graph (steps, hiding)
-  starts from the previous positions. Persons with relations among themselves (not to the centre) form **islands**:
+- The simulation stays live (`useLiveLayout`, shared by both diagrams): a dragged person stays **pinned** where it is
+  dropped (ring around the circle), a double click releases it; pins are stored per diagram and person in
+  `localStorage` (`monastic-economies:pins:graph:<id>`, `…:relations:<id>`). A changed graph (steps, hiding) starts
+  from the previous positions. `forceApart` pushes island persons away from everyone they have no relation with.
+  Persons with relations among themselves (not to the centre) form **islands**:
   held only loosely by the radial force, further out, pulled together by stiff relation links. A line with a relation
   label is at least as long as its label needs (label width + circles + margin), so "neighbor, marriage witness"
   fits; when the graph has to be zoomed out to fit the pane, relation lines are lengthened by the zoom factor.
 - Line thickness = number of shared charters (square-root scale). Explicit relations
   are accent-coloured lines labelled with the relation names as chips (`--relation-chip` background, padding; sigma
   4 draws edge label backgrounds without rounded corners); one line per pair with all names, directed ones get an
-  arrow head (active → passive), at both ends when relations go both ways.
+  arrow head (active → passive), at both ends when relations go both ways. Relation labels are forced visible
+  (`labelVisibility: "visible"`): sigma 4 otherwise only labels edges whose two nodes show their labels, so zooming
+  in (one end off screen) dropped them.
 - Circles by `@sex`: `--male` blue, `--female` pink, `--sex-unknown` grey; the centre person in `--accent`.
-- Both diagrams share `usePersonSigma`: drag a person (circle or name) to move it, click selects it (click again or on
+- Both diagrams share `usePersonSigma`: drag a person (circle or name) to move and pin it, click selects it (click again or on
   the background to clear; not in the URL), **Ctrl/⌘-click opens** the person, **Alt-click hides** them in the graph
-  (`?hide=a,b`, kept when moving to another person; hidden persons are not followed to further steps). Hovered,
+  (`?hide=a,b`; hidden persons are not followed to further steps). Hidden persons are remembered per person in
+  `localStorage` (`monastic-economies:hidden:<id>`) and restored when the URL has no `?hide=`; the toolbar shows
+  "N persons hidden" next to "Hide unrelated" (click scrolls to the Hidden list). Hovered,
   selected and list-hovered persons are highlighted with their lines; their list row gets a subtle border (selected
   rows also a background and scroll into view).
 - Labels: the first name only, centred below the circle. On highlight, alternate spellings appear below the name in
@@ -140,7 +147,9 @@ UI language: **English**.
   followed recursively from the person, charters ignored. Family-tree layout: one row per generation, the passive
   side of a directed relation one row below the active side (arrow active → passive), mutual relations in the same
   row; persons joined in a row (siblings, spouses) stay together as a chain, as far apart as their relation label needs;
-  rows ordered by barycentre sweeps; the row distance fits the longest label between rows. The list next to it shows
+  rows ordered by barycentre sweeps; the row distance fits the longest label between rows. That layout is the start
+  of a live force layout (pull towards the row's height, lines as long as their labels, `forceApart` for persons
+  without a relation between them). The list next to it shows
   everyone in the tree with their relations ("parent of Odo", "has parent Hugo"), ordered by shortest path
   ("Direct relations", then "2 steps", …), by name within a group.
 - sigma 4: options are `{ primitives, styles, settings }` (settings are nested!). Sizes are pixels only with

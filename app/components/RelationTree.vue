@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { Person } from "#shared/types"
+import type { LiveNode } from "~/composables/useLiveLayout"
 import type { RelationTree } from "~/composables/useRelationTree"
 
 // Explicit relations only (charters ignored), drawn like a family tree: one row per generation,
 // the active side of a directed relation above the passive side (arrow active -> passive), mutual
 // relations side by side. Rows are ordered with a few barycentre sweeps, so related persons stand
-// close to each other. Rendered client-only (WebGL), see usePersonSigma for the interaction.
+// close to each other; that is the start of a live force layout (d3-force) which keeps the rows
+// (a pull towards the row's height), gives every line the length its label needs and pushes persons
+// without a relation between them apart. Rendered client-only (WebGL), see usePersonSigma and
+// useLiveLayout for the interaction.
 const props = defineProps<{
     id: string
     persons: Record<string, Person>
@@ -26,7 +30,19 @@ const view = usePersonSigma(container, {
     select: (id) => emit("select", id),
     open: (id) => emit("open", id),
     hover: (id) => emit("hover", id),
+    drag: (id, phase) => live.drag(id, phase),
+    unpin: (id) => live.unpin(id),
 })
+interface SimNode extends LiveNode {
+    /** height of its row */
+    row: number
+}
+interface SimLink {
+    source: string | SimNode
+    target: string | SimNode
+    distance: number
+}
+const live = useLiveLayout<SimNode, SimLink>(() => `relations:${props.id}`)
 
 /**
  * One line per pair of persons (a pair can have a mutual relation and directed ones both ways): all names on
@@ -148,13 +164,59 @@ let renderId = 0
 async function render() {
     if (!container.value || !props.tree.levels.length) return
     const id = ++renderId
-    const { default: Graph } = await import("graphology")
+    const [{ default: Graph }, d3] = await Promise.all([import("graphology"), import("d3-force")])
     if (id !== renderId) return
     const pos = layout(props.tree)
+    const all = lines(props.tree)
+    const sizeOf = (n: string) => (n === props.id ? 12 : 8)
+    live.stop()
+    const nodes = new Map<string, SimNode>(
+        [...pos].map(([n, p]) => [
+            n,
+            {
+                id: n,
+                ...p,
+                row: p.y,
+                radius: Math.max(sizeOf(n) + 8, textWidth(props.persons[n]?.name ?? n, "name") / 2 + 8),
+            },
+        ]),
+    )
+    nodes.get(props.id)!.anchor = { ...pos.get(props.id)! }
+    live.applyPins(nodes)
+    const linked = new Set(all.map((e) => `${e.a} ${e.b}`))
+    const links: SimLink[] = all.map((e) => ({
+        source: e.a,
+        target: e.b,
+        // long enough for the label between the two circles
+        distance: sizeOf(e.a) + sizeOf(e.b) + textWidth(e.names.join(", "), "relation") + 40,
+    }))
+    const sim = d3
+        .forceSimulation([...nodes.values()])
+        .force("row", d3.forceY<SimNode>((n) => n.row).strength(0.3))
+        .force("x", d3.forceX<SimNode>(0).strength(0.01))
+        .force("collide", d3.forceCollide<SimNode>((n) => n.radius).iterations(3))
+        .force("charge", d3.forceManyBody<SimNode>().strength(-60).distanceMax(250))
+        .force(
+            "apart",
+            forceApart<SimNode>((a, b) => !linked.has(a < b ? `${a} ${b}` : `${b} ${a}`), 40, 0.5),
+        )
+        .force(
+            "link",
+            d3
+                .forceLink<SimNode, SimLink>(links)
+                .id((n) => n.id)
+                .distance((l) => l.distance)
+                .strength(0.5),
+        )
+        .stop()
+    // the tree layout is a good start: settle gently
+    sim.alpha(0.5)
+    sim.tick(200)
+
     const graph = new Graph()
-    for (const [n, p] of pos)
-        graph.addNode(n, { ...p, size: n === props.id ? 12 : 8, ...personNode(props.persons[n], n, n === props.id) })
-    for (const e of lines(props.tree))
+    for (const [n, p] of nodes)
+        graph.addNode(n, { x: p.x, y: p.y, size: sizeOf(n), ...personNode(props.persons[n], n, n === props.id) })
+    for (const e of all)
         graph.addEdge(e.a, e.b, {
             size: 2,
             explicit: true,
@@ -162,9 +224,10 @@ async function render() {
             head: e.head ? "arrow" : "none",
             tail: e.tail ? "arrow" : "none",
         })
+    live.attach(sim, nodes, graph)
     // frame: the whole tree (at least the pane, so units stay pixels and labels fit their lines)
-    const xs = [...pos.values()].map((p) => p.x)
-    const ys = [...pos.values()].map((p) => p.y)
+    const xs = [...nodes.values()].map((p) => p.x)
+    const ys = [...nodes.values()].map((p) => p.y)
     await view.mount(graph, {
         x: [Math.min(...xs) - COL / 2, Math.max(...xs) + COL / 2],
         y: [Math.min(...ys) - ROW / 2, Math.max(...ys) + ROW / 2],

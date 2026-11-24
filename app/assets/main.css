@@ -1425,6 +1425,7 @@ select {
 
 .graph-toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.6rem;
     padding: 0.5rem 1.25rem;
@@ -1446,7 +1447,18 @@ select {
     background: none;
     font: inherit;
     font-size: 0.85rem;
+    white-space: nowrap;
     cursor: pointer;
+}
+
+.graph-toolbar .toggle-btn + .toggle-btn {
+    margin-left: 0;
+}
+
+/* "3 persons hidden": information, not a switch */
+.graph-toolbar .toggle-btn.hidden-info {
+    border-color: var(--border);
+    color: var(--muted);
 }
 .link-btn {
     padding: 0;

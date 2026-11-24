@@ -46,7 +46,8 @@ watch(selected, async (id) => {
 const MAX_DEPTH = 5
 const depth = computed(() => Math.min(MAX_DEPTH, Math.max(1, Number(route.query.depth) || 1)))
 const setDepth = (d: number) => router.push({ query: { ...route.query, depth: d > 1 ? String(d) : undefined } })
-// persons switched off in the graph (URL: ?hide=a,b), kept when moving to another person
+// persons switched off in the graph (URL: ?hide=a,b), remembered per person in localStorage
+// (`monastic-economies:hidden:<id>`): a link without ?hide= restores them
 const hidden = computed(() =>
     String(route.query.hide ?? "")
         .split(",")
@@ -56,6 +57,33 @@ const setHidden = (ids: string[]) =>
     router.push({ query: { ...route.query, hide: ids.length ? ids.join(",") : undefined } })
 const toggleHidden = (id: string) =>
     setHidden(hidden.value.includes(id) ? hidden.value.filter((h) => h !== id) : [...hidden.value, id])
+const HIDDEN = "monastic-economies:hidden:"
+let restoredFor = ""
+function syncHidden() {
+    try {
+        if (restoredFor !== props.id) {
+            // first look at this person: restore what was hidden last time, unless the URL says otherwise
+            restoredFor = props.id
+            const stored = localStorage.getItem(HIDDEN + props.id)
+            if (!route.query.hide && stored) {
+                router.replace({ query: { ...route.query, hide: stored } })
+                return
+            }
+        }
+        const ids = hidden.value.filter((h) => h !== props.id).join(",")
+        if (ids) localStorage.setItem(HIDDEN + props.id, ids)
+        else localStorage.removeItem(HIDDEN + props.id)
+    } catch {
+        // storage unavailable: the URL still holds them
+    }
+}
+onMounted(() => {
+    syncHidden()
+    watch(() => [props.id, route.query.hide], syncHidden)
+})
+const hiddenCount = computed(() => hidden.value.filter((h) => h !== props.id).length)
+const showHiddenList = () =>
+    document.querySelector(".neighbor-heading.hidden-heading")?.scrollIntoView({ behavior: "smooth", block: "start" })
 // only explicit relations (URL: ?unrelated=hide): persons that just share charters are left out
 const hideUnrelated = computed(() => route.query.unrelated === "hide")
 const toggleUnrelated = () =>
@@ -63,7 +91,6 @@ const toggleUnrelated = () =>
 const graphQuery = computed(() => ({
     view: view.value === "charters" ? undefined : view.value,
     depth: depth.value > 1 ? String(depth.value) : undefined,
-    hide: hidden.value.filter((h) => h !== props.id).join(",") || undefined,
     unrelated: hideUnrelated.value ? "hide" : undefined,
 }))
 const openPerson = (id: string) => router.push({ path: `/persons/${id}`, query: graphQuery.value })
@@ -159,7 +186,11 @@ const sexIcon = (s?: string) => {
                         ]"
                         :key="sec.key"
                     >
-                        <h2 v-if="sec.items.length" class="neighbor-heading">
+                        <h2
+                            v-if="sec.items.length"
+                            class="neighbor-heading"
+                            :class="{ 'hidden-heading': sec.key === 'hidden' }"
+                        >
                             {{ sec.title }}
                             <span class="count">{{ sec.items.length }}</span>
                             <span v-if="sec.key === 'unrelated' && hideUnrelated" class="note">hidden in graph</span>
@@ -277,6 +308,15 @@ const sexIcon = (s?: string) => {
                 </div>
                 <span class="muted small">{{ shown }} person{{ shown === 1 ? "" : "s" }}</span>
                 <button
+                    v-if="hiddenCount"
+                    type="button"
+                    class="toggle-btn hidden-info"
+                    title="Hidden with Alt-click or the eye in the list; show them in the list"
+                    @click="showHiddenList"
+                >
+                    <EyeOff :size="16" /> {{ hiddenCount }} person{{ hiddenCount === 1 ? "" : "s" }} hidden
+                </button>
+                <button
                     type="button"
                     class="toggle-btn"
                     :class="{ off: !hideUnrelated }"
@@ -304,11 +344,11 @@ const sexIcon = (s?: string) => {
                 />
             </ClientOnly>
             <p class="graph-legend muted small">
-                Drag a person to move them, click to select, Ctrl/⌘-click to open, Alt-click to hide (with everyone
-                reached only through them). Rings: steps from {{ person.name }}; the more charters a person shares, the
-                nearer it sits. Lines: links of {{ person.name }}, and from step 2 on the link each person was reached
-                through. Thickness: shared charters. <span class="accent">Coloured lines</span>: explicit relations from
-                the index, arrow = direction.
+                Drag a person to pin them where you drop them (double-click releases), click to select, Ctrl/⌘-click to
+                open, Alt-click to hide (with everyone reached only through them). Rings: steps from {{ person.name }};
+                the more charters a person shares, the nearer it sits. Lines: links of {{ person.name }}, and from step
+                2 on the link each person was reached through. Thickness: shared charters.
+                <span class="accent">Coloured lines</span>: explicit relations from the index, arrow = direction.
             </p>
         </section>
         <section v-else-if="view === 'relations'" class="pane graph-pane">
@@ -333,8 +373,8 @@ const sexIcon = (s?: string) => {
             <p class="graph-legend muted small">
                 All persons connected to {{ person.name }} through relations from the index, followed recursively;
                 shared charters are ignored. Arrows point from the active to the passive side of a relation (e.g. lord →
-                vassal), which also stands one row lower; mutual relations side by side. Drag a person to move them,
-                click to select, Ctrl/⌘-click to open.
+                vassal), which also stands one row lower; mutual relations side by side. Drag a person to pin them
+                (double-click releases), click to select, Ctrl/⌘-click to open.
             </p>
         </section>
         <section v-else class="pane preview">

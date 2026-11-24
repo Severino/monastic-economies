@@ -9,7 +9,9 @@ import type Sigma from "sigma"
  * centre (boolean). Edge attributes: size, explicit (has a relation), relations (label), head / tail
  * ("arrow" | "none").
  *
- * Interaction: drag a person to move it, click selects it (click again or on the background to clear),
+ * Node attribute `pinned` (boolean) draws a ring around the circle (see useLiveLayout).
+ *
+ * Interaction: drag a person to move it (double click releases it), click selects it (click again or on the background to clear),
  * Ctrl/⌘-click opens it, Alt-click hides it (where the diagram supports hiding). Hovered, selected and
  * list-highlighted persons get their label on a box, with the alternate spellings below the name in smaller
  * type (`tips`, rendered as HTML by the diagram component: `<PersonTips :tips="tips" />`).
@@ -23,6 +25,8 @@ export interface PersonSigmaHandlers {
     hover: (id: string | undefined) => void
     /** dragging a person (graph units), e.g. to let a force simulation follow */
     drag?: (id: string, phase: "start" | "move" | "end") => void
+    /** double click: release a pinned person */
+    unpin?: (id: string) => void
 }
 
 const FONT_FAMILY = "system-ui, -apple-system, Segoe UI, sans-serif"
@@ -164,6 +168,16 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
                         backdropCornerRadius: 4,
                     },
                     {
+                        // pinned (dragged) persons: a ring around the circle
+                        when: (a) => !!a.pinned,
+                        then: {
+                            backdropVisibility: "visible",
+                            backdropArea: "node",
+                            backdropShadowBlur: 0,
+                            backdropPadding: 3,
+                        },
+                    },
+                    {
                         // hover (circle or name), selection or list hover: bigger, label on a box with the
                         // alternate spellings below the name, on top
                         when: isLit,
@@ -189,6 +203,9 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
                         labelBackgroundColor: () => palette["relation-chip"],
                         labelBackgroundPadding: 5,
                         labelSize: 12,
+                        // relation names always show (sigma otherwise only labels lines whose two persons show
+                        // their names, so zooming in, with one end off screen, dropped them)
+                        labelVisibility: (a) => (a.relations ? "visible" : "hidden"),
                         depth: "edges",
                     },
                     {
@@ -209,6 +226,10 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
             else on.select(node === lit.selected ? undefined : node)
         })
         s.on("clickStage", () => on.select(undefined))
+        s.on("doubleClickNode", ({ node, preventSigmaDefault }) => {
+            preventSigmaDefault()
+            on.unpin?.(node)
+        })
         s.on("enterNode", ({ node }) => {
             lit.hovered = node
             on.hover(node)
