@@ -275,19 +275,15 @@ const entities = computed(() => {
                             <Library :size="15" aria-hidden="true" />
                             <span class="sr-only">Manuscript</span>{{ charter.manuscript.idno }}
                         </li>
-                        <li title="Date">
-                            <CalendarDays :size="15" aria-hidden="true" />
-                            <span class="sr-only">Date</span>
-                            <time :datetime="charter.date.when">{{ formatDate(charter.date) || "undated" }}</time>
-                        </li>
                         <li v-if="charter.locus.from" title="Folios">
                             <BookOpen :size="15" aria-hidden="true" />
                             <span class="sr-only">Folios</span>{{ charter.locus.from
                             }}<template v-if="charter.locus.to">–{{ charter.locus.to }}</template>
                         </li>
-                        <li v-if="charter.language" class="lang" title="Language">
-                            <Languages :size="15" aria-hidden="true" />
-                            <span class="sr-only">Language</span>{{ charter.language }}
+                        <li title="Date">
+                            <CalendarDays :size="15" aria-hidden="true" />
+                            <span class="sr-only">Date</span>
+                            <time :datetime="charter.date.when">{{ formatDate(charter.date) || "undated" }}</time>
                         </li>
                     </ul>
                 </div>
