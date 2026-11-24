@@ -21,9 +21,20 @@ export interface PersonSigmaHandlers {
     open: (id: string) => void
     hide?: (id: string) => void
     hover: (id: string | undefined) => void
+    /** dragging a person (graph units), e.g. to let a force simulation follow */
+    drag?: (id: string, phase: "start" | "move" | "end") => void
 }
 
-const FONT = "system-ui, -apple-system, Segoe UI, sans-serif"
+const FONT_FAMILY = "system-ui, -apple-system, Segoe UI, sans-serif"
+let measure: CanvasRenderingContext2D | undefined
+/** Width of a text in px: names are 600 13px, relation labels 12px (as drawn in the diagrams). */
+export function textWidth(text: string, kind: "name" | "relation") {
+    measure ??= document.createElement("canvas").getContext("2d")!
+    measure.font = kind === "name" ? `600 13px ${FONT_FAMILY}` : `400 12px ${FONT_FAMILY}`
+    return measure.measureText(text).width
+}
+
+const FONT = FONT_FAMILY
 
 export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: PersonSigmaHandlers) {
     let sigma: Sigma | undefined
@@ -40,6 +51,7 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
         border: "",
         accent: "",
         surface: "",
+        "relation-chip": "",
         male: "",
         female: "",
         "sex-unknown": "",
@@ -174,8 +186,8 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
                         // relation names on a solid background in the page's surface colour
                         label: { attribute: "relations" },
                         labelColor: () => palette.accent,
-                        labelBackgroundColor: () => palette.surface,
-                        labelBackgroundPadding: 3,
+                        labelBackgroundColor: () => palette["relation-chip"],
+                        labelBackgroundPadding: 5,
                         labelSize: 12,
                         depth: "edges",
                     },
@@ -208,14 +220,31 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
             applyLit()
         })
         s.on("afterRender", placeTips)
+        s.on("nodeDragStart", ({ node }) => on.drag?.(node, "start"))
+        s.on("nodeDrag", ({ node }) => on.drag?.(node, "move"))
+        s.on("nodeDragEnd", ({ node }) => on.drag?.(node, "end"))
         sigma = s
         shown = new Set()
         applyLit()
     }
 
     /** Shows a graph; positions in graph units, `bbox` = the area to frame. */
-    async function mount(graph: Graph, bbox: { x: [number, number]; y: [number, number] }) {
+    /**
+     * Shows a graph. Positions are in graph units, `content` = the area to frame. The frame is at least as big as
+     * the pane, so while the diagram fits one graph unit is one pixel and lines keep the length they were laid
+     * out with (long enough for their labels); a bigger diagram is zoomed out to fit.
+     */
+    async function mount(graph: Graph, content: { x: [number, number]; y: [number, number] }) {
         ;[{ default: SigmaCtor }, rendering] = await Promise.all([import("sigma"), import("sigma/rendering")])
+        const w = (container.value?.clientWidth ?? 600) - 100
+        const h = (container.value?.clientHeight ?? 400) - 100
+        const half = (r: [number, number], min: number) => Math.max((r[1] - r[0]) / 2, min / 2)
+        const mid = (r: [number, number]) => (r[0] + r[1]) / 2
+        const [hx, hy] = [half(content.x, w), half(content.y, h)]
+        const bbox = {
+            x: [mid(content.x) - hx, mid(content.x) + hx] as [number, number],
+            y: [mid(content.y) - hy, mid(content.y) + hy] as [number, number],
+        }
         current = { graph, bbox }
         lit.hovered = undefined
         create()

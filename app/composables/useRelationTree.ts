@@ -10,8 +10,11 @@ export interface TreeLink {
 }
 
 export interface RelationTree {
-    /** every person reachable through explicit relations, with its generation (the centre person is 0) */
-    levels: { id: Id; level: number }[]
+    /**
+     * every person reachable through explicit relations, with its generation (the centre person is 0) and
+     * its distance: the fewest relations between it and the centre person (1 = direct relation)
+     */
+    levels: { id: Id; level: number; dist: number }[]
     links: TreeLink[]
 }
 
@@ -56,17 +59,19 @@ export function useRelationTree(id: MaybeRefOrGetter<string>) {
                 push(l.b, l.a, l.directed ? -1 : 0)
             }
             const level = new Map([[self, 0]])
+            const dist = new Map([[self, 0]])
             const queue = [self]
             while (queue.length) {
                 const from = queue.shift()!
                 for (const { to, step } of (next.get(from) ?? []).sort((x, y) => x.to.localeCompare(y.to)))
                     if (!level.has(to)) {
                         level.set(to, level.get(from)! + step)
+                        dist.set(to, dist.get(from)! + 1)
                         queue.push(to)
                     }
             }
             return {
-                levels: [...level].map(([id, l]) => ({ id, level: l })),
+                levels: [...level].map(([id, l]) => ({ id, level: l, dist: dist.get(id)! })),
                 links: [...byPair.values()].filter((l) => level.has(l.a) && level.has(l.b)),
             }
         },

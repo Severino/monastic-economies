@@ -84,29 +84,31 @@ const sections = computed(() => {
             .sort((a, b) => nameOf(a.id).localeCompare(nameOf(b.id))),
     }
 })
-// list next to the relation tree: everyone in it, by generation, with their relations in the tree
-const treeRows = computed(() => {
+// list next to the relation tree: everyone in it, nearest first (fewest relations between them and this
+// person: direct relations, then 2 steps, …), then by name; with their relations in the tree
+const treeGroups = computed(() => {
     const t = tree.value
     if (!t) return []
-    const level = new Map(t.levels.map((l) => [l.id, l.level]))
-    return t.levels
+    const rows = t.levels
         .filter((l) => l.id !== props.id)
-        .sort((a, b) => a.level - b.level || nameOf(a.id).localeCompare(nameOf(b.id)))
-        .map(({ id }) => ({
+        .sort((a, b) => a.dist - b.dist || nameOf(a.id).localeCompare(nameOf(b.id)))
+        .map(({ id, dist }) => ({
             id,
+            dist,
             relations: t.links
                 .filter((l) => l.a === id || l.b === id)
                 .map((l) => {
                     const other = nameOf(l.a === id ? l.b : l.a)
                     const names = l.names.join(", ")
-                    return !l.directed
-                        ? `${names} of ${other}`
-                        : l.a === id
-                          ? `${names} of ${other}`
-                          : `has ${names} ${other}`
+                    return !l.directed || l.a === id ? `${names} of ${other}` : `has ${names} ${other}`
                 }),
-            level: level.get(id)!,
         }))
+    const groups = new Map<number, typeof rows>()
+    for (const r of rows) groups.set(r.dist, [...(groups.get(r.dist) ?? []), r])
+    return [...groups].map(([dist, items]) => ({
+        title: dist === 1 ? "Direct relations" : `${dist} steps`,
+        items,
+    }))
 })
 const treeSize = computed(() => Math.max(0, (tree.value?.levels.length ?? 0) - 1))
 const stepCounts = ref<number[]>([])
@@ -213,25 +215,30 @@ const sexIcon = (s?: string) => {
                 </template>
             </template>
             <template v-else-if="view === 'relations'">
-                <p v-if="!treeRows.length" class="muted">No explicit relations to other persons.</p>
-                <ul v-else class="neighbor-list">
-                    <li
-                        v-for="r in treeRows"
-                        :key="r.id"
-                        class="neighbor-row"
-                        :data-person="r.id"
-                        :class="{ hovered: r.id === hovered, active: r.id === selected }"
-                        @mouseenter="hovered = r.id"
-                        @mouseleave="hovered = undefined"
-                    >
-                        <NuxtLink :to="{ path: `/persons/${r.id}`, query: graphQuery }" class="neighbor">
-                            <span class="name" :class="sexOf(persons?.[r.id]?.sex)" :title="altOf(r.id)">{{
-                                nameOf(r.id)
-                            }}</span>
-                            <span class="relations">{{ r.relations.join(", ") }}</span>
-                        </NuxtLink>
-                    </li>
-                </ul>
+                <p v-if="!treeGroups.length" class="muted">No explicit relations to other persons.</p>
+                <template v-for="g in treeGroups" :key="g.title">
+                    <h2 class="neighbor-heading">
+                        {{ g.title }} <span class="count">{{ g.items.length }}</span>
+                    </h2>
+                    <ul class="neighbor-list">
+                        <li
+                            v-for="r in g.items"
+                            :key="r.id"
+                            class="neighbor-row"
+                            :data-person="r.id"
+                            :class="{ hovered: r.id === hovered, active: r.id === selected }"
+                            @mouseenter="hovered = r.id"
+                            @mouseleave="hovered = undefined"
+                        >
+                            <NuxtLink :to="{ path: `/persons/${r.id}`, query: graphQuery }" class="neighbor">
+                                <span class="name" :class="sexOf(persons?.[r.id]?.sex)" :title="altOf(r.id)">{{
+                                    nameOf(r.id)
+                                }}</span>
+                                <span class="relations">{{ r.relations.join(", ") }}</span>
+                            </NuxtLink>
+                        </li>
+                    </ul>
+                </template>
             </template>
             <template v-else>
                 <ul class="charter-list compact">

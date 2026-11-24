@@ -28,11 +28,37 @@ const view = usePersonSigma(container, {
     hover: (id) => emit("hover", id),
 })
 
-/** Column and row distance, in graph units. */
+/**
+ * One line per pair of persons (a pair can have a mutual relation and directed ones both ways): all names on
+ * one label, an arrow head at each passive end.
+ */
+function lines(tree: RelationTree) {
+    const byPair = new Map<string, { a: string; b: string; names: string[]; head: boolean; tail: boolean }>()
+    for (const l of tree.links) {
+        const [a, b] = l.a < l.b ? [l.a, l.b] : [l.b, l.a]
+        const key = `${a} ${b}`
+        if (!byPair.has(key)) byPair.set(key, { a, b, names: [], head: false, tail: false })
+        const e = byPair.get(key)!
+        for (const n of l.names) if (!e.names.includes(n)) e.names.push(n)
+        if (l.directed && l.b === b) e.head = true
+        if (l.directed && l.b === a) e.tail = true
+    }
+    return [...byPair.values()]
+}
+
+/** Column and row distance in graph units (= pixels while the tree fits); persons side by side with a relation
+ * stand as far apart as their label needs, rows as far as the longest label between rows. */
 const COL = 130
-const ROW = 110
+let ROW = 110
 
 function layout(tree: RelationTree) {
+    // lines within a row carry their label horizontally (column distance), lines between rows mostly
+    // vertically (row distance)
+    const lv = new Map(tree.levels.map((l) => [l.id, l.level]))
+    const all = lines(tree)
+    const label = new Map(all.map((e) => [`${e.a} ${e.b}`, textWidth(e.names.join(", "), "relation")]))
+    const gap = (n: string, m: string) => Math.max(COL, (label.get(n < m ? `${n} ${m}` : `${m} ${n}`) ?? 0) + 60)
+    ROW = Math.max(110, ...all.filter((e) => lv.get(e.a) !== lv.get(e.b)).map((e) => label.get(`${e.a} ${e.b}`)! + 50))
     const rows = new Map<number, string[]>()
     for (const { id, level } of tree.levels) {
         if (!rows.has(level)) rows.set(level, [])
@@ -103,9 +129,10 @@ function layout(tree: RelationTree) {
             let prev = -Infinity
             let shift = 0
             for (const b of list) {
-                const width = (b.length - 1) * COL
+                const offsets = b.map((_, i) => b.slice(0, i).reduce((d, n, j) => d + gap(n, b[j + 1]!), 0))
+                const width = offsets[offsets.length - 1]!
                 const left = Math.max(wants.get(b)! - width / 2, prev + COL)
-                b.forEach((n, i) => x.set(n, left + i * COL))
+                b.forEach((n, i) => x.set(n, left + offsets[i]!))
                 prev = left + width
                 shift += wants.get(b)! - (left + width / 2)
             }
@@ -127,22 +154,21 @@ async function render() {
     const graph = new Graph()
     for (const [n, p] of pos)
         graph.addNode(n, { ...p, size: n === props.id ? 12 : 8, ...personNode(props.persons[n], n, n === props.id) })
-    for (const l of props.tree.links)
-        graph.addEdge(l.a, l.b, {
+    for (const e of lines(props.tree))
+        graph.addEdge(e.a, e.b, {
             size: 2,
             explicit: true,
-            relations: l.names.join(", "),
-            head: l.directed ? "arrow" : "none",
-            tail: "none",
+            relations: e.names.join(", "),
+            head: e.head ? "arrow" : "none",
+            tail: e.tail ? "arrow" : "none",
         })
-    // frame: the whole tree, at least three columns and two rows, so two persons are not stretched apart
+    // frame: the whole tree (at least the pane, so units stay pixels and labels fit their lines)
     const xs = [...pos.values()].map((p) => p.x)
     const ys = [...pos.values()].map((p) => p.y)
-    const half = (lo: number, hi: number, min: number) => Math.max((hi - lo) / 2, min)
-    const [cx, cy] = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]
-    const hx = half(Math.min(...xs), Math.max(...xs), COL * 1.5) + COL * 0.5
-    const hy = half(Math.min(...ys), Math.max(...ys), ROW) + ROW * 0.5
-    await view.mount(graph, { x: [cx - hx, cx + hx], y: [cy - hy, cy + hy] })
+    await view.mount(graph, {
+        x: [Math.min(...xs) - COL / 2, Math.max(...xs) + COL / 2],
+        y: [Math.min(...ys) - ROW / 2, Math.max(...ys) + ROW / 2],
+    })
     view.setListHighlight(props.highlight)
     view.setSelected(props.selected)
 }

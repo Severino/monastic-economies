@@ -21,7 +21,7 @@
     <person xml:id="heriger1" sex="1"><persName><name>Heriger</name></persName></person>
     <person xml:id="hugo1" sex="1"><persName><name>Hugo</name><name>Hugho</name></persName></person>
     <person xml:id="oaticho1" sex="1"><persName><name>Oaticho</name></persName></person>
-    <person xml:id="odo1" sex="1"><persName><name>Odo</name></persName></person>
+    <person xml:id="odo1" sex="1"><persName><name>Odo, Oddo, Otto</name></persName></person>
     <person xml:id="ratlind1" sex="2"><persName><name>Ratlind</name><name>Ratlinda</name></persName></person>
     <person xml:id="ratolt1" sex="1"><persName><name>Ratolt</name></persName></person>
     <person xml:id="richar1" sex="1"><persName><name>Richar</name></persName></person>
@@ -40,13 +40,17 @@
     <person xml:id="wideric1" sex="1"><persName><name>Wideric</name></persName></person>
     <person xml:id="wilo1"><persName><name>Wilo</name></persName></person>
     <person xml:id="winihard1" sex="1"><persName><name>Winihard</name></persName></person>
-    <person xml:id="wulfgund1" sex="2"><persName><name>Wulfgund</name></persName></person>
+    <person xml:id="wulfgund1" sex="2"><persName><name>Wulfgund, Vulfgund</name></persName></person>
     <person xml:id="wulfmar1" sex="1"><persName><name>Wulfmar</name></persName></person>
   </listPerson>
   <listRelation>
     <relation name="head" active="#baugulf1" passive="#fuldaOrg"/>
     <relation name="sibling" type="family" mutual="#theothard1 #eburswind1"/>
     <relation name="lord" active="#baugulf1" passive="#uto1"/>
+    <relation name="neighbor" mutual="#baugulf1 #haicho1"/>
+    <relation name="marriageWitness" active="#baugulf1" passive="#haicho1"/>
+    <relation name="neighbor" mutual="#haicho1 #haimrich1 #adalbert1"/>
+    <relation name="lord" active="#uto1" passive="#ruodfrid1"/>
     <relation name="spouse" type="family" mutual="#hugo1 #ratlind1"/>
     <relation name="parent" type="family" active="#hugo1 #ratlind1" passive="#odo1 #richar1"/>
     <relation name="parent" type="family" active="#theothard1" passive="#hugo1"/>

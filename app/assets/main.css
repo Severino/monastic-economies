@@ -23,6 +23,8 @@
     --male: #2f6fc0;
     --female: #d4508f;
     --sex-unknown: #9b968d;
+    /* relation names on the diagram lines */
+    --relation-chip: #f4e8df;
     --font-text: Georgia, "Times New Roman", serif;
     --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
     --header-h: 3.5rem;
@@ -52,6 +54,7 @@
         --male: #7fb2f0;
         --female: #f08fbf;
         --sex-unknown: #8a857c;
+        --relation-chip: #3b2c22;
     }
 }
 
@@ -77,6 +80,7 @@
     --male: #7fb2f0;
     --female: #f08fbf;
     --sex-unknown: #8a857c;
+    --relation-chip: #3b2c22;
 }
 
 :root {

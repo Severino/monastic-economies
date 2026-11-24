@@ -59,6 +59,8 @@ const ALT: Record<string, string> = {
     ratlind1: "Ratlinda",
 }
 const sex = (id: string) => (UNKNOWN.has(id) ? "" : ` sex="${FEMALE.has(id) ? 2 : 1}"`)
+// comma-separated spellings inside one <name>, as in the real index
+const COMMA: Record<string, string> = { odo1: "Oddo, Otto", wulfgund1: "Vulfgund" }
 const alt = (id: string) => (ALT[id] ? `<name>${ALT[id]}</name>` : "")
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -67,12 +69,16 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <standOff xmlns="http://www.tei-c.org/ns/1.0" type="indicesFulda">
   <listPerson>
     <head>Persons</head>
-${persons.map((id) => `    <person xml:id="${id}"${sex(id)}><persName><name>${esc(label(id))}</name>${alt(id)}</persName></person>`).join("\n")}
+${persons.map((id) => `    <person xml:id="${id}"${sex(id)}><persName><name>${esc(label(id))}${COMMA[id] ? `, ${COMMA[id]}` : ""}</name>${alt(id)}</persName></person>`).join("\n")}
   </listPerson>
   <listRelation>
     <relation name="head" active="#baugulf1" passive="#fuldaOrg"/>
     <relation name="sibling" type="family" mutual="#theothard1 #eburswind1"/>
     <relation name="lord" active="#baugulf1" passive="#uto1"/>
+    <relation name="neighbor" mutual="#baugulf1 #haicho1"/>
+    <relation name="marriageWitness" active="#baugulf1" passive="#haicho1"/>
+    <relation name="neighbor" mutual="#haicho1 #haimrich1 #adalbert1"/>
+    <relation name="lord" active="#uto1" passive="#ruodfrid1"/>
     <relation name="spouse" type="family" mutual="#hugo1 #ratlind1"/>
     <relation name="parent" type="family" active="#hugo1 #ratlind1" passive="#odo1 #richar1"/>
     <relation name="parent" type="family" active="#theothard1" passive="#hugo1"/>

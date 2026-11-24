@@ -106,15 +106,22 @@ UI language: **English**.
 
 - The person page toggles **Charters | Graph | Relations** (`?view=graph`, `?view=relations`, pushes a history entry).
 - Graph = network around the person, **1–5 steps** (`?depth=`, default 1). A link is co-occurrence in a charter
-  or an explicit `relation` from the index. Drawn lines: all links of the centre person, and from step 2 on
-  only the link each person was reached through (all links would be a hairball: every charter is a clique).
+  or an explicit `relation` from the index. Drawn lines: all links of the centre person, from step 2 on the link
+  each person was reached through, and explicit relations between any two persons shown (all co-occurrences would
+  be a hairball: every charter is a clique).
 - Layout: **d3-force** (sigma has no layout of its own; ForceAtlas2 cannot set a target distance). A radial force puts
   each person on the ring of its step, pulled inwards by the number of charters it shares with the person it was
   reached from (more shared charters = nearer the centre person); collision keeps circles apart; it starts from a radial
   tree so subtrees stay in their sector. The frame always keeps the centre person in the middle.
+- The simulation stays live: dragging a person pins it and the others follow; a changed graph (steps, hiding)
+  starts from the previous positions. Persons with relations among themselves (not to the centre) form **islands**:
+  held only loosely by the radial force, further out, pulled together by stiff relation links. A line with a relation
+  label is at least as long as its label needs (label width + circles + margin), so "neighbor, marriage witness"
+  fits; when the graph has to be zoomed out to fit the pane, relation lines are lengthened by the zoom factor.
 - Line thickness = number of shared charters (square-root scale). Explicit relations
-  are accent-coloured lines labelled with the relation name (on a solid `--surface` background); directed ones get an arrow head (active → passive),
-  at both ends when relations go both ways.
+  are accent-coloured lines labelled with the relation names as chips (`--relation-chip` background, padding; sigma
+  4 draws edge label backgrounds without rounded corners); one line per pair with all names, directed ones get an
+  arrow head (active → passive), at both ends when relations go both ways.
 - Circles by `@sex`: `--male` blue, `--female` pink, `--sex-unknown` grey; the centre person in `--accent`.
 - Both diagrams share `usePersonSigma`: drag a person (circle or name) to move it, click selects it (click again or on
   the background to clear; not in the URL), **Ctrl/⌘-click opens** the person, **Alt-click hides** them in the graph
@@ -126,13 +133,16 @@ UI language: **English**.
 - "Hide unrelated" (`?unrelated=hide`, push) follows only explicit relations, so persons that only share charters drop out.
 - The list next to the graph has three sections: **Related** (explicit relation), **Unrelated** (only shared charters),
   **Hidden** (all of `?hide=`, with "Show all"); each row has an eye toggle and a dot in the person's graph colour.
-- Names: the first `<name>` is the name; further `<name>`s are alternate spellings with no extra information, shown
-  only on hover (diagram label box, `title` in lists) and matched by the persons search.
+- Names: there are no surnames. `<name>` elements (or the `persName` text) are split on commas; the first name is
+  the name, every further one is an alternate spelling with no extra information, shown only on hover (diagram
+  label box, `title` in lists) and matched by the persons search.
 - **Relations** view (`RelationTree.vue`, data from `useRelationTree` while prerendering): explicit relations only,
   followed recursively from the person, charters ignored. Family-tree layout: one row per generation, the passive
   side of a directed relation one row below the active side (arrow active → passive), mutual relations in the same
-  row; persons joined in a row (siblings, spouses) stay together as a chain; rows ordered by barycentre sweeps. The
-  list next to it shows everyone in the tree with their relations ("parent of Odo", "has parent Hugo").
+  row; persons joined in a row (siblings, spouses) stay together as a chain, as far apart as their relation label needs;
+  rows ordered by barycentre sweeps; the row distance fits the longest label between rows. The list next to it shows
+  everyone in the tree with their relations ("parent of Odo", "has parent Hugo"), ordered by shortest path
+  ("Direct relations", then "2 steps", …), by name within a group.
 - sigma 4: options are `{ primitives, styles, settings }` (settings are nested!). Sizes are pixels only with
   `itemSizesReference: "screen"`; the v4 default (`"positions"`) blows every circle up to fill the canvas.
 - The graph reads `network.json` (compact, persons only, written by the build) in the browser. The list of direct

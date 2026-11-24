@@ -39,6 +39,7 @@ const view = usePersonSigma(container, {
         if (id !== props.id) emit("hide", id)
     },
     hover: (id) => emit("hover", id),
+    drag: onDrag,
 })
 
 // ---- network (fetched once per visit) --------------------------------------------
@@ -93,14 +94,11 @@ function explore(adj: Map<string, Map<string, Link>>) {
     return { step, parent }
 }
 
-/** Distance between two rings, in graph units. */
-const RING = 100
-
 /**
  * Start positions: radial tree (ring = step, each subtree gets a sector proportional to the square
- * root of its number of leaves). The force simulation starts from here, so subtrees stay together.
+ * root of its number of leaves). New persons start here; persons already shown keep their place.
  */
-function radialTree(step: Map<string, number>, parent: Map<string, string>) {
+function radialTree(step: Map<string, number>, parent: Map<string, string>, ring: number) {
     const children = new Map<string, string[]>()
     for (const [c, p] of parent) {
         if (!children.has(p)) children.set(p, [])
@@ -124,7 +122,7 @@ function radialTree(step: Map<string, number>, parent: Map<string, string>) {
         for (const c of kids) {
             const span = ((to - from) * weight(c)) / total
             const angle = a + span / 2 - Math.PI / 2
-            const r = step.get(c)! * RING
+            const r = step.get(c)! * ring
             pos.set(c, { x: r * Math.cos(angle), y: r * Math.sin(angle) })
             place(c, a, a + span)
             a += span
@@ -138,85 +136,171 @@ interface SimNode {
     id: string
     x: number
     y: number
-    fx?: number
-    fy?: number
+    fx?: number | null
+    fy?: number | null
     /** target distance from the centre */
     r: number
+    /** collision radius: circle and the name below it */
+    radius: number
+}
+interface SimLink {
+    source: string | SimNode
+    target: string | SimNode
+    distance: number
+    strength: number
 }
 
-/**
- * Force layout (d3-force): a radial force pulls every person to its target distance from the centre,
- * collision keeps circles and labels apart, a weak link to the parent keeps subtrees in their sector.
- * Target distance: ring of its step, pulled inwards by the number of charters shared with the person
- * it was reached from (most shared charters in this graph: 45 % nearer than the ring).
- */
-async function forceLayout(step: Map<string, number>, parent: Map<string, string>, strength: (c: string) => number) {
-    const { forceSimulation, forceRadial, forceCollide, forceLink, forceManyBody } = await import("d3-force")
-    const start = radialTree(step, parent)
-    const max = Math.max(1, ...[...parent.keys()].map(strength))
-    const pull = (c: string) => (max > 1 ? Math.sqrt(Math.max(0, strength(c) - 1) / (max - 1)) : 0)
-    const nodes: SimNode[] = [...step].map(([id, s]) => ({
-        id,
-        ...start.get(id)!,
-        r: s === 0 ? 0 : (s - 0.45 * pull(id)) * RING,
-    }))
-    nodes[0]!.fx = 0
-    nodes[0]!.fy = 0
-    const links = [...parent].map(([c, p]) => ({ source: p, target: c }))
-    const sim = forceSimulation(nodes)
-        .force("radial", forceRadial<SimNode>((n) => n.r).strength(0.8))
-        .force("collide", forceCollide<SimNode>(RING * 0.16).iterations(2))
-        .force(
-            "charge",
-            forceManyBody<SimNode>()
-                .strength(-RING * 0.4)
-                .distanceMax(RING * 1.2),
-        )
-        .force(
-            "link",
-            forceLink<SimNode, { source: string; target: string }>(links)
-                .id((n) => n.id)
-                .distance(RING)
-                .strength(0.05),
-        )
-        .stop()
-    sim.tick(300)
-    return new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }]))
+// ---- live force simulation (d3-force), graph units = pixels while the graph fits the pane ----------
+// It keeps running while a person is dragged, so the others make room; when persons are hidden or the
+// depth changes, everyone already shown starts where they were and the rest settles around them.
+let sim: import("d3-force").Simulation<SimNode, SimLink> | undefined
+let simNodes = new Map<string, SimNode>()
+let shownGraph: import("graphology").default | undefined
+/** last positions, kept across re-renders of the same centre person */
+let lastPos = new Map<string, { x: number; y: number }>()
+let lastCentre = ""
+
+function onDrag(id: string, phase: "start" | "move" | "end") {
+    const n = simNodes.get(id)
+    if (!sim || !n || !shownGraph) return
+    if (phase === "end") {
+        // the centre person stays pinned to the middle; everyone else is released
+        if (id !== props.id) n.fx = n.fy = null
+        sim.alphaTarget(0)
+        return
+    }
+    const a = shownGraph.getNodeAttributes(id)
+    n.fx = a.x
+    n.fy = a.y
+    if (phase === "start") sim.alphaTarget(0.3).restart()
 }
 
 let renderId = 0
 async function render() {
     if (!container.value) return
     const id = ++renderId
-    const [{ default: Graph }, adj] = await Promise.all([import("graphology"), loadNetwork()])
-    const { step, parent } = explore(adj)
-    const shared = (c: string) => adj.get(parent.get(c)!)?.get(c)?.charters ?? 0
-    const pos = await forceLayout(step, parent, shared)
+    const [{ default: Graph }, adj, d3] = await Promise.all([import("graphology"), loadNetwork(), import("d3-force")])
     if (id !== renderId || !container.value) return // a newer render started meanwhile
+    const { step, parent } = explore(adj)
 
     const counts = Array.from({ length: props.depth }, (_, i) => [...step.values()].filter((s) => s === i + 1).length)
     emit("stats", counts)
 
+    // Lines drawn: every link of the centre person, from step 2 on the link to the person each one was
+    // reached from, and explicit relations between any two persons shown (so related persons form islands).
+    // Drawing every co-occurrence would be a hairball: every charter is a clique.
+    const pairs = new Map<string, [string, string]>()
+    const addPair = (a: string, b: string) => pairs.set(a < b ? `${a} ${b}` : `${b} ${a}`, [a, b])
+    for (const b of adj.get(props.id)?.keys() ?? []) if (step.has(b)) addPair(props.id, b)
+    for (const [c, p] of parent) if (step.get(c)! > 1) addPair(p, c)
+    for (const a of step.keys())
+        for (const [b, l] of adj.get(a) ?? []) if (step.has(b) && l.relations.length && a < b) addPair(a, b)
+    const relationText = (a: string, b: string) =>
+        [
+            ...new Set(
+                adj
+                    .get(a)!
+                    .get(b)!
+                    .relations.map((r) => r.name),
+            ),
+        ].join(", ")
+
+    // ring distance; a line with a relation label is at least as long as the label needs
+    const sizeOf = (s: number) => (s === 0 ? 14 : Math.max(4, 10 - 2 * s))
+    const minLength = (a: string, b: string) => {
+        const t = relationText(a, b)
+        return sizeOf(step.get(a)!) + sizeOf(step.get(b)!) + (t ? textWidth(t, "relation") + 30 : 40)
+    }
+    const ring = 130
+
+    // target distance from the centre: ring of its step, pulled inwards by the charters shared with the person
+    // it was reached from (the most shared charters in this graph: 40 % nearer), never shorter than its label
+    const shared = (c: string) => adj.get(parent.get(c)!)?.get(c)?.charters ?? 0
+    const max = Math.max(1, ...[...parent.keys()].map(shared))
+    const pull = (c: string) => (max > 1 ? Math.sqrt(Math.max(0, shared(c) - 1) / (max - 1)) : 0)
+    const target = (c: string, s: number) =>
+        s === 0 ? 0 : Math.max((s - 0.4 * pull(c)) * ring, s === 1 ? minLength(props.id, c) : 0)
+    // persons with explicit relations to others shown (not the centre) form islands: they sit further out,
+    // held only loosely by the radial force, so their relation lines can arrange them
+    const inIsland = new Set(
+        [...pairs.values()].filter(([a, b]) => a !== props.id && b !== props.id && relationText(a, b)).flat(),
+    )
+
+    if (lastCentre !== props.id) lastPos = new Map()
+    lastCentre = props.id
+    const start = radialTree(step, parent, ring)
+    sim?.stop()
+    simNodes = new Map(
+        [...step].map(([n, s]) => [
+            n,
+            {
+                id: n,
+                ...(lastPos.get(n) ?? start.get(n)!),
+                r: inIsland.has(n) ? Math.max(target(n, s), (s + 0.6) * ring) : target(n, s),
+                radius: Math.max(sizeOf(s) + 8, textWidth(nameOf(n), "name") / 2 + 8),
+            },
+        ]),
+    )
+    const centre = simNodes.get(props.id)!
+    centre.fx = centre.fy = 0
+    const links: SimLink[] = [...pairs.values()].map(([a, b]) => {
+        const related = !!relationText(a, b)
+        const fromCentre = a === props.id || b === props.id
+        return {
+            source: a,
+            target: b,
+            // lines from the centre follow the radial target; other relations pull their persons together
+            distance: fromCentre ? target(a === props.id ? b : a, 1) : minLength(a, b),
+            strength: related ? (fromCentre ? 0.3 : 1) : fromCentre ? 0.02 : 0.08,
+        }
+    })
+    sim = d3
+        .forceSimulation([...simNodes.values()])
+        .force(
+            "radial",
+            d3.forceRadial<SimNode>((n) => n.r).strength((n) => (inIsland.has(n.id) ? 0.04 : 0.3)),
+        )
+        .force("collide", d3.forceCollide<SimNode>((n) => n.radius).iterations(3))
+        .force("charge", d3.forceManyBody<SimNode>().strength(-120).distanceMax(300))
+        .force(
+            "link",
+            d3
+                .forceLink<SimNode, SimLink>(links)
+                .id((n) => n.id)
+                .distance((l) => l.distance)
+                .strength((l) => l.strength)
+                .iterations(3),
+        )
+        .stop()
+    // settle before showing (persons already shown barely move), then keep the simulation for dragging
+    const changed = [...step.keys()].some((n) => !lastPos.has(n))
+    sim.alpha(changed ? 1 : 0.3)
+    sim.tick(300)
+    // A graph bigger than the pane is shown zoomed out, which shortens the lines but not their labels.
+    // So once more with the relation lines between other persons lengthened by that zoom factor.
+    const extent = (axis: "x" | "y") => Math.max(...[...simNodes.values()].map((p) => Math.abs(p[axis]))) + 40
+    const f = Math.min(
+        1,
+        (container.value.clientWidth - 100) / 2 / extent("x"),
+        (container.value.clientHeight - 100) / 2 / extent("y"),
+    )
+    if (f < 0.98) {
+        for (const l of links) if (l.strength === 1) l.distance /= f
+        sim.force<import("d3-force").ForceLink<SimNode, SimLink>>("link")!.links(links)
+        sim.alpha(0.5)
+        sim.tick(200)
+    }
+
     const graph = new Graph()
     for (const [n, s] of step)
         graph.addNode(n, {
-            ...pos.get(n)!,
-            // graph y grows downwards in the layout, upwards in sigma
-            y: -pos.get(n)!.y,
-            size: s === 0 ? 14 : Math.max(4, 10 - 2 * s),
+            x: simNodes.get(n)!.x,
+            y: simNodes.get(n)!.y,
+            size: sizeOf(s),
             ...personNode(props.persons[n], n, s === 0),
         })
-    // Links drawn: every link of the centre person, and from step 2 on the link to the person each one was
-    // reached from. Co-occurrence makes every charter a clique, so drawing all links between shown persons
-    // turns into a hairball as soon as there is more than one step.
-    const links: [string, string][] = [
-        ...[...(adj.get(props.id)?.keys() ?? [])]
-            .filter((b) => step.has(b))
-            .map((b): [string, string] => [props.id, b]),
-        ...[...parent].filter(([c]) => step.get(c)! > 1).map(([c, p]): [string, string] => [p, c]),
-    ]
-    const max = Math.max(1, ...links.map(([a, b]) => adj.get(a)!.get(b)!.charters))
-    for (const [a, b] of links) {
+    const maxCharters = Math.max(1, ...[...pairs.values()].map(([a, b]) => adj.get(a)!.get(b)!.charters))
+    for (const [a, b] of pairs.values()) {
         const l = adj.get(a)!.get(b)!
         // directed relations as arrow heads (active -> passive), both ends when they go both ways
         const out = l.relations.some((r) => r.dir === "out")
@@ -229,17 +313,25 @@ async function render() {
             // (explicit relations at least 2 px, so their arrow heads stay visible)
             size: Math.max(
                 l.relations.length ? 2 : 1,
-                l.charters ? 1 + 5 * Math.sqrt((l.charters - 1) / Math.max(1, max - 1)) : 1,
+                l.charters ? 1 + 5 * Math.sqrt((l.charters - 1) / Math.max(1, maxCharters - 1)) : 1,
             ),
             explicit: l.relations.length > 0,
-            relations: [...new Set(l.relations.map((r) => r.name))].join(", "),
+            relations: relationText(a, b),
         })
     }
+    shownGraph = graph
+    sim.on("tick", () => {
+        graph.updateEachNodeAttributes((n, a) => {
+            const p = simNodes.get(n)!
+            return { ...a, x: p.x, y: p.y }
+        })
+        for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })
+    })
+    for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })
 
-    // frame: centre person in the middle, and at least one ring around it (a graph of two persons
-    // would otherwise be stretched over the whole pane)
-    const reach = Math.max(RING, ...[...pos.values()].map((p) => Math.max(Math.abs(p.x), Math.abs(p.y)))) + RING * 0.15
-    await view.mount(graph, { x: [-reach, reach], y: [-reach, reach] })
+    // frame: centre person in the middle, the whole graph (at least the pane, so units stay pixels)
+    const [rx, ry] = [extent("x"), extent("y")]
+    await view.mount(graph, { x: [-rx, rx], y: [-ry, ry] })
     view.setListHighlight(props.highlight)
     view.setSelected(props.selected)
 }
@@ -255,7 +347,10 @@ watch(
 watch(() => [props.id, props.depth, props.hidden.join(), props.hideUnrelated], render)
 
 onMounted(render)
-onBeforeUnmount(() => renderId++)
+onBeforeUnmount(() => {
+    renderId++
+    sim?.stop()
+})
 </script>
 
 <template>

@@ -1,24 +1,17 @@
 <template>
-    <NuxtLink
-        :to="to"
-        class="navigation-button"
-    >
+    <NuxtLink :to="to" class="navigation-button">
         <div class="image">
-            <img
-                v-if="img"
-                :src="img"
-            />
+            <img v-if="img" :src="img" />
         </div>
         <footer>
             <slot v-if="$slots.default" />
             <strong v-else>{{ text }}</strong>
         </footer>
-
     </NuxtLink>
 </template>
 
 <script setup lang="ts">
-import type { RouteLocationRaw } from 'vue-router'
+import type { RouteLocationRaw } from "vue-router"
 
 const props = defineProps<{
     img?: string
@@ -72,6 +65,5 @@ footer {
     width: 100%;
     height: 100%;
     object-fit: cover;
-
 }
 </style>
