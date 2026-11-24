@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Select with a text filter: a button opens a popover with a search box and the matching options.
 import { Check, ChevronDown, X } from "lucide-vue-next"
-import { fold, markParts, queryTerms } from "#shared/search"
+import { markParts, matchesAll, queryTerms } from "#shared/search"
 
 export interface FilterOption {
     value: string
@@ -31,7 +31,7 @@ const terms = computed(() => queryTerms(query.value))
 const items = computed<FilterOption[]>(() => {
     const t = terms.value
     if (!t.length) return [{ value: "", label: props.allLabel }, ...props.options]
-    return props.options.filter((o) => t.every((x) => fold(o.label).includes(x)))
+    return props.options.filter((o) => matchesAll(o.label, t))
 })
 
 async function show() {

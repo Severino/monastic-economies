@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Eye, EyeOff, List, Share2, X } from "lucide-vue-next"
+import { Eye, EyeOff, Link2Off, List, Share2 } from "lucide-vue-next"
+import type { EgoNeighbor } from "~/composables/useEgoNetwork"
 
 const props = defineProps<{ id: string }>()
 const { data: persons } = await usePersons()
@@ -18,7 +19,11 @@ const view = computed(() => (route.query.view === "graph" ? "graph" : "charters"
 const setView = (v: string) => router.push({ query: { ...route.query, view: v === "graph" ? "graph" : undefined } })
 
 const { data: neighbors } = await useEgoNetwork(() => props.id)
-const names = computed(() => Object.fromEntries(Object.values(persons.value ?? {}).map((p) => [p.id, p.name])))
+const nameOf = (id: string) => persons.value?.[id]?.name ?? id
+const altOf = (id: string) => {
+    const alt = persons.value?.[id]?.altNames ?? []
+    return alt.length ? `also: ${alt.join(", ")}` : undefined
+}
 const hovered = ref<string>()
 
 // steps from the centre person (URL: ?depth=2), 1–5
@@ -35,16 +40,45 @@ const setHidden = (ids: string[]) =>
     router.push({ query: { ...route.query, hide: ids.length ? ids.join(",") : undefined } })
 const toggleHidden = (id: string) =>
     setHidden(hidden.value.includes(id) ? hidden.value.filter((h) => h !== id) : [...hidden.value, id])
+// only explicit relations (URL: ?unrelated=hide): persons that just share charters are left out
+const hideUnrelated = computed(() => route.query.unrelated === "hide")
+const toggleUnrelated = () =>
+    router.push({ query: { ...route.query, unrelated: hideUnrelated.value ? undefined : "hide" } })
 const graphQuery = computed(() => ({
     view: "graph",
     depth: depth.value > 1 ? String(depth.value) : undefined,
     hide: hidden.value.filter((h) => h !== props.id).join(",") || undefined,
+    unrelated: hideUnrelated.value ? "hide" : undefined,
 }))
-const openPerson = (id: string) => router.push({ path: `/persons/${id}`, query: graphQuery.value })
+function openPerson(id: string, newTab = false) {
+    const to = { path: `/persons/${id}`, query: graphQuery.value }
+    if (newTab) window.open(router.resolve(to).href, "_blank")
+    else router.push(to)
+}
+// list next to the graph: RELATED (explicit relation), UNRELATED (only shared charters), HIDDEN
+const byCharters = (a: EgoNeighbor, b: EgoNeighbor) =>
+    b.charters.length - a.charters.length || nameOf(a.id).localeCompare(nameOf(b.id))
+const sections = computed(() => {
+    const all = neighbors.value ?? []
+    const visible = all.filter((n) => !hidden.value.includes(n.id))
+    const byId = new Map(all.map((n) => [n.id, n]))
+    return {
+        related: visible.filter((n) => n.relations.length).sort(byCharters),
+        unrelated: visible.filter((n) => !n.relations.length).sort(byCharters),
+        // hidden persons can be further away than one step, so they are not always neighbours
+        hidden: hidden.value
+            .filter((h) => h !== props.id)
+            .map((h) => byId.get(h) ?? { id: h, charters: [], relations: [] })
+            .sort((a, b) => nameOf(a.id).localeCompare(nameOf(b.id))),
+    }
+})
 const stepCounts = ref<number[]>([])
 const shown = computed(() => stepCounts.value.reduce((a, b) => a + b, 0))
 
-const sexIcon: Record<string, string> = { m: "♂", male: "♂", f: "♀", female: "♀" }
+const sexIcon = (s?: string) => {
+    const sex = sexOf(s)
+    return sex === "male" ? "♂" : sex === "female" ? "♀" : ""
+}
 </script>
 
 <template>
@@ -53,11 +87,10 @@ const sexIcon: Record<string, string> = { m: "♂", male: "♂", f: "♀", femal
         <section class="pane">
             <p class="eyebrow">Person</p>
             <h1>
-                <span v-if="person.sex" class="sex" :title="person.sex">{{ sexIcon[person.sex] ?? "" }}</span>
-                {{ person.name }}
+                <span v-if="sexIcon(person.sex)" class="sex" :title="sexOf(person.sex)">{{ sexIcon(person.sex) }}</span>
+                <span :title="altOf(person.id)">{{ person.name }}</span>
                 <span v-if="person.roleName" class="muted">{{ person.roleName }}</span>
             </h1>
-            <p v-if="person.altNames.length" class="muted">also: {{ person.altNames.join(", ") }}</p>
             <ul v-if="person.affiliations.length">
                 <li v-for="(a, i) in person.affiliations" :key="i">{{ a.type }}: {{ a.label }}</li>
             </ul>
@@ -75,41 +108,67 @@ const sexIcon: Record<string, string> = { m: "♂", male: "♂", f: "♀", femal
 
             <template v-if="view === 'graph'">
                 <p v-if="!neighbors?.length" class="muted">No connections to other persons.</p>
-                <ul v-else class="neighbor-list">
-                    <li
-                        v-for="n in neighbors"
-                        :key="n.id"
-                        class="neighbor-row"
-                        :class="{ selected: n.id === hovered, off: hidden.includes(n.id) }"
-                        @mouseenter="hovered = n.id"
-                        @mouseleave="hovered = undefined"
+                <template v-else>
+                    <template
+                        v-for="sec in [
+                            { key: 'related', title: 'Related', items: sections.related },
+                            { key: 'unrelated', title: 'Unrelated', items: sections.unrelated },
+                            { key: 'hidden', title: 'Hidden', items: sections.hidden },
+                        ]"
+                        :key="sec.key"
                     >
-                        <button
-                            type="button"
-                            class="eye"
-                            :title="hidden.includes(n.id) ? 'Show in graph' : 'Hide in graph'"
-                            :aria-pressed="!hidden.includes(n.id)"
-                            @click="toggleHidden(n.id)"
-                        >
-                            <EyeOff v-if="hidden.includes(n.id)" :size="16" />
-                            <Eye v-else :size="16" />
-                        </button>
-                        <NuxtLink :to="{ path: `/persons/${n.id}`, query: graphQuery }" class="neighbor">
-                            <span class="name">
-                                <strong>{{ splitName(names[n.id] ?? n.id).first }}</strong>
-                                <span v-if="splitName(names[n.id] ?? n.id).rest" class="rest">{{
-                                    splitName(names[n.id] ?? n.id).rest
-                                }}</span>
-                            </span>
-                            <span v-if="n.relations.length" class="relations">{{
-                                n.relations.map(relationLabel).join(", ")
-                            }}</span>
-                            <span class="muted small"
-                                >{{ n.charters.length }} shared charter{{ n.charters.length === 1 ? "" : "s" }}</span
+                        <h2 v-if="sec.items.length" class="neighbor-heading">
+                            {{ sec.title }}
+                            <span class="count">{{ sec.items.length }}</span>
+                            <span v-if="sec.key === 'unrelated' && hideUnrelated" class="note">hidden in graph</span>
+                            <button
+                                v-if="sec.key === 'hidden'"
+                                type="button"
+                                class="link-btn small"
+                                @click="setHidden([])"
                             >
-                        </NuxtLink>
-                    </li>
-                </ul>
+                                Show all
+                            </button>
+                        </h2>
+                        <ul v-if="sec.items.length" class="neighbor-list">
+                            <li
+                                v-for="n in sec.items"
+                                :key="n.id"
+                                class="neighbor-row"
+                                :class="{
+                                    selected: n.id === hovered,
+                                    off: sec.key === 'hidden' || (sec.key === 'unrelated' && hideUnrelated),
+                                }"
+                                @mouseenter="hovered = n.id"
+                                @mouseleave="hovered = undefined"
+                            >
+                                <button
+                                    type="button"
+                                    class="eye"
+                                    :title="sec.key === 'hidden' ? 'Show in graph' : 'Hide in graph'"
+                                    :aria-pressed="sec.key !== 'hidden'"
+                                    @click="toggleHidden(n.id)"
+                                >
+                                    <EyeOff v-if="sec.key === 'hidden'" :size="16" />
+                                    <Eye v-else :size="16" />
+                                </button>
+                                <NuxtLink :to="{ path: `/persons/${n.id}`, query: graphQuery }" class="neighbor">
+                                    <span class="name" :class="sexOf(persons?.[n.id]?.sex)" :title="altOf(n.id)">{{
+                                        nameOf(n.id)
+                                    }}</span>
+                                    <span v-if="n.relations.length" class="relations">{{
+                                        n.relations.map(relationLabel).join(", ")
+                                    }}</span>
+                                    <span v-if="n.charters.length" class="muted small"
+                                        >{{ n.charters.length }} shared charter{{
+                                            n.charters.length === 1 ? "" : "s"
+                                        }}</span
+                                    >
+                                </NuxtLink>
+                            </li>
+                        </ul>
+                    </template>
+                </template>
             </template>
             <template v-else>
                 <ul class="charter-list compact">
@@ -147,28 +206,25 @@ const sexIcon: Record<string, string> = { m: "♂", male: "♂", f: "♀", femal
                     </button>
                 </div>
                 <span class="muted small">{{ shown }} person{{ shown === 1 ? "" : "s" }}</span>
-            </div>
-            <div v-if="hidden.length" class="graph-toolbar hidden-row">
-                <span class="muted small">Hidden</span>
                 <button
-                    v-for="h in hidden"
-                    :key="h"
                     type="button"
-                    class="chip"
-                    :title="`Show ${names[h] ?? h} again`"
-                    @click="toggleHidden(h)"
+                    class="toggle-btn"
+                    :class="{ off: !hideUnrelated }"
+                    :aria-pressed="hideUnrelated"
+                    title="Hide persons that only share charters and have no explicit relation"
+                    @click="toggleUnrelated"
                 >
-                    {{ names[h] ?? h }} <X :size="14" />
+                    <Link2Off :size="16" /> Hide unrelated
                 </button>
-                <button type="button" class="link-btn small" @click="setHidden([])">Show all</button>
             </div>
             <ClientOnly>
                 <PersonGraph
                     :id="id"
-                    :names="names"
+                    :persons="persons ?? {}"
                     :depth="depth"
                     :highlight="hovered"
                     :hidden="hidden"
+                    :hide-unrelated="hideUnrelated"
                     @hover="hovered = $event"
                     @select="openPerson"
                     @hide="toggleHidden"
@@ -176,10 +232,11 @@ const sexIcon: Record<string, string> = { m: "♂", male: "♂", f: "♀", femal
                 />
             </ClientOnly>
             <p class="graph-legend muted small">
-                Click a person to hide them (and everyone reached only through them); Ctrl/⌘-click opens the person.
-                Rings: steps from {{ person.name }}. Lines: links of {{ person.name }}, and from step 2 on the link each
-                person was reached through. Thickness: shared charters, hover a line for the count.
-                <span class="accent">Coloured lines</span>: explicit relations from the index, arrow = direction.
+                Click a person to open them; Alt-click hides them (and everyone reached only through them). Rings: steps
+                from {{ person.name }}; the more charters a person shares, the nearer it sits. Lines: links of
+                {{ person.name }}, and from step 2 on the link each person was reached through. Thickness: shared
+                charters, hover a line for the count. <span class="accent">Coloured lines</span>: explicit relations
+                from the index, arrow = direction.
             </p>
         </section>
         <section v-else class="pane preview">

@@ -19,6 +19,10 @@
     --map-3: #ad93d6;
     --map-5: #e39cbf;
     --map-ink: #1f1d1a;
+    /* person graph: circles by sex (TEI @sex) */
+    --male: #2f6fc0;
+    --female: #d4508f;
+    --sex-unknown: #9b968d;
     --font-text: Georgia, "Times New Roman", serif;
     --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
     --header-h: 3.5rem;
@@ -45,6 +49,9 @@
         --map-3: #b59ae6;
         --map-5: #eea6c8;
         --map-ink: #171614;
+        --male: #7fb2f0;
+        --female: #f08fbf;
+        --sex-unknown: #8a857c;
     }
 }
 
@@ -67,6 +74,9 @@
     --map-3: #b59ae6;
     --map-5: #eea6c8;
     --map-ink: #171614;
+    --male: #7fb2f0;
+    --female: #f08fbf;
+    --sex-unknown: #8a857c;
 }
 
 :root {
@@ -193,7 +203,7 @@ h2 {
     overflow: auto;
 }
 
-.split>.pane:first-child {
+.split > .pane:first-child {
     border-right: 1px solid var(--border);
 }
 
@@ -203,7 +213,7 @@ h2 {
         height: calc(100dvh - var(--header-h));
     }
 
-    .split>.pane {
+    .split > .pane {
         height: 100%;
         min-height: 0;
     }
@@ -218,7 +228,7 @@ h2 {
         overflow: visible;
     }
 
-    .split>.pane:first-child {
+    .split > .pane:first-child {
         border-right: 0;
         border-bottom: 1px solid var(--border);
     }
@@ -515,7 +525,7 @@ h2 {
     margin: 0;
 }
 
-.charter-footer dl>div {
+.charter-footer dl > div {
     display: contents;
 }
 
@@ -623,7 +633,6 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
     .slide-enter-active,
     .slide-leave-active {
         transition: none;
@@ -657,7 +666,6 @@ h2 {
 .tei-running .tei-ab {
     display: block !important;
 }
-
 
 .tei-head {
     font-weight: 600;
@@ -713,7 +721,7 @@ h2 {
     color: var(--accent);
 }
 
-.tei-text>.tei-pb:first-child {
+.tei-text > .tei-pb:first-child {
     margin-top: 0;
 }
 
@@ -1052,12 +1060,6 @@ select {
     background: var(--surface);
     color: var(--text);
 }
-
-.wide {
-    width: 100%;
-    max-width: 30rem;
-}
-
 .charter-list {
     list-style: none;
     padding: 0;
@@ -1178,6 +1180,7 @@ select {
 }
 
 .sex {
+    margin-right: 0.3em;
     color: var(--muted);
 }
 
@@ -1227,7 +1230,7 @@ select {
     cursor: pointer;
 }
 
-.view-switch button+button {
+.view-switch button + button {
     border-left: 1px solid var(--border);
 }
 
@@ -1289,17 +1292,51 @@ select {
 }
 
 .neighbor .name {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.25;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
     color: var(--person);
 }
-
-.neighbor .name strong {
-    font-weight: 600;
+/* dot in the colour of the person's circle in the graph */
+.neighbor .name::before {
+    content: "";
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--sex-unknown);
 }
-
-.neighbor .name .rest {
+.neighbor .name.male::before {
+    background: var(--male);
+}
+.neighbor .name.female::before {
+    background: var(--female);
+}
+.neighbor-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 1rem 0 0.25rem;
+    padding: 0 0.5rem;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.neighbor-heading .count {
+    font-weight: 400;
+}
+.neighbor-heading .note {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+}
+.neighbor-heading .link-btn {
+    margin-left: auto;
+    text-transform: none;
+    letter-spacing: 0;
     font-weight: 400;
 }
 
@@ -1319,12 +1356,32 @@ select {
     padding: 0;
     background: var(--surface);
 }
-
-.person-graph {
+.person-graph-wrap {
+    position: relative;
     flex: 1;
     min-height: 0;
 }
-
+.person-graph {
+    position: absolute;
+    inset: 0;
+}
+/* alternate spellings, above the hovered person */
+.graph-tip {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    max-width: 16rem;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+    font-size: 0.85rem;
+    line-height: 1.3;
+    transform: translate(-50%, calc(-100% - 18px));
+    pointer-events: none;
+}
 .graph-legend {
     margin: 0;
     padding: 0.5rem 1.25rem;
@@ -1332,7 +1389,7 @@ select {
 }
 
 @media (max-width: 899px) {
-    .person-graph {
+    .person-graph-wrap {
         height: 70vh;
         flex: none;
     }
@@ -1353,29 +1410,16 @@ select {
 .depth-switch button {
     padding: 0.2rem 0.65rem;
 }
-
-.hidden-row {
-    flex-wrap: wrap;
-}
-
-.chip {
+.graph-toolbar .toggle-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.1rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: var(--surface);
-    color: var(--text);
+    gap: 0.3rem;
+    margin-left: auto;
+    background: none;
     font: inherit;
     font-size: 0.85rem;
     cursor: pointer;
 }
-
-.chip:hover {
-    border-color: var(--accent);
-}
-
 .link-btn {
     padding: 0;
     border: 0;

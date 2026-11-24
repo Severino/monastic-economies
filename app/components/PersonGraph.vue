@@ -1,25 +1,27 @@
 <script setup lang="ts">
 import type Sigma from "sigma"
-import type { PersonNetwork } from "#shared/types"
+import type { Person, PersonNetwork } from "#shared/types"
 
-// Network around one person, up to `depth` steps away. Rings = steps; within a ring
-// every person sits in the sector of the person it was reached from (radial tree).
-// Line thickness = number of shared charters; accent lines = explicit relations.
-// Rendered client-only (WebGL); sigma is imported lazily so it stays out of SSR.
+// Network around one person, up to `depth` steps away. Positions come from a force simulation
+// (d3-force): each step is a ring, and within its ring a person sits nearer the centre the more
+// charters it shares with the person it was reached from. Line thickness = number of shared
+// charters; accent lines = explicit relations. Rendered client-only (WebGL); sigma, graphology
+// and d3-force are imported lazily so they stay out of SSR.
 const props = defineProps<{
     id: string
-    /** person id -> display name */
-    names: Record<string, string>
+    persons: Record<string, Person>
     depth: number
     /** person highlighted from outside (hover in the list) */
     highlight?: string
     /** persons switched off: not shown and not followed to further steps */
     hidden: string[]
+    /** only follow explicit relations (persons that just share charters are left out) */
+    hideUnrelated: boolean
 }>()
 const emit = defineEmits<{
-    /** ctrl/cmd-click: open that person */
-    select: [id: string]
-    /** click: switch a person off */
+    /** click: open that person (newTab: ctrl/cmd-click) */
+    select: [id: string, newTab: boolean]
+    /** alt-click: switch a person off */
     hide: [id: string]
     hover: [id: string | undefined]
     /** number of persons per step: [1 step, 2 steps, …] */
@@ -30,14 +32,26 @@ const container = ref<HTMLElement>()
 let sigma: Sigma | undefined
 let observer: MutationObserver | undefined
 let media: MediaQueryList | undefined
-let hoveredEdge: string | undefined
 
 // colours come from the CSS tokens, re-read when the theme changes
-const palette = { text: "", muted: "", border: "", accent: "", person: "", surface: "" }
+const palette = {
+    text: "",
+    muted: "",
+    border: "",
+    accent: "",
+    surface: "",
+    male: "",
+    female: "",
+    "sex-unknown": "",
+}
 function readPalette() {
     const s = getComputedStyle(document.documentElement)
     for (const k of Object.keys(palette) as (keyof typeof palette)[]) palette[k] = s.getPropertyValue(`--${k}`).trim()
 }
+
+// ---- tooltip (name, alternate spellings) ---------------------------------------------
+const tip = ref<{ id: string; x: number; y: number }>()
+const tipPerson = computed(() => (tip.value ? props.persons[tip.value.id] : undefined))
 
 // ---- network (fetched once per visit) --------------------------------------------
 interface Link {
@@ -65,6 +79,8 @@ function loadNetwork() {
     return network
 }
 
+const nameOf = (id: string) => props.persons[id]?.name ?? id
+
 /** Breadth-first search from the centre; parent = strongest link from the previous step. */
 function explore(adj: Map<string, Map<string, Link>>) {
     const off = new Set(props.hidden)
@@ -76,6 +92,7 @@ function explore(adj: Map<string, Map<string, Link>>) {
         for (const from of frontier)
             for (const [to, l] of adj.get(from) ?? []) {
                 if (off.has(to) || (step.has(to) && step.get(to)! < d)) continue
+                if (props.hideUnrelated && !l.relations.length) continue
                 const best = parent.get(to)
                 if (!step.has(to)) {
                     step.set(to, d)
@@ -88,8 +105,14 @@ function explore(adj: Map<string, Map<string, Link>>) {
     return { step, parent }
 }
 
-/** Radial tree: ring = step, each subtree gets a sector proportional to its number of leaves. */
-function layout(step: Map<string, number>, parent: Map<string, string>) {
+/** Distance between two rings, in graph units. */
+const RING = 100
+
+/**
+ * Start positions: radial tree (ring = step, each subtree gets a sector proportional to the square
+ * root of its number of leaves). The force simulation starts from here, so subtrees stay together.
+ */
+function radialTree(step: Map<string, number>, parent: Map<string, string>) {
     const children = new Map<string, string[]>()
     for (const [c, p] of parent) {
         if (!children.has(p)) children.set(p, [])
@@ -103,25 +126,17 @@ function layout(step: Map<string, number>, parent: Map<string, string>) {
     }
     count(props.id)
     const pos = new Map<string, { x: number; y: number }>([[props.id, { x: 0, y: 0 }]])
-    const ringSize = new Map<number, number>()
-    for (const st of step.values()) ringSize.set(st, (ringSize.get(st) ?? 0) + 1)
-    const placed = new Map<number, number>() // per ring, in angular order
-    // sector width ~ sqrt(leaves): big subtrees get more room without squeezing the inner ring
     const weight = (n: string) => Math.sqrt(leaves.get(n)!)
     const place = (n: string, from: number, to: number) => {
         let a = from
         const kids = (children.get(n) ?? []).sort(
-            (x, y) => leaves.get(y)! - leaves.get(x)! || (props.names[x] ?? x).localeCompare(props.names[y] ?? y),
+            (x, y) => leaves.get(y)! - leaves.get(x)! || nameOf(x).localeCompare(nameOf(y)),
         )
         const total = kids.reduce((t, c) => t + weight(c), 0)
         for (const c of kids) {
             const span = ((to - from) * weight(c)) / total
             const angle = a + span / 2 - Math.PI / 2
-            // crowded ring: alternate two radii so neighbouring labels don't collide
-            const ring = ringSize.get(step.get(c)!)!
-            const i = placed.get(step.get(c)!) ?? 0
-            placed.set(step.get(c)!, i + 1)
-            const r = step.get(c)! + (ring > 20 && i % 2 ? 0.18 : 0)
+            const r = step.get(c)! * RING
             pos.set(c, { x: r * Math.cos(angle), y: r * Math.sin(angle) })
             place(c, a, a + span)
             a += span
@@ -131,28 +146,76 @@ function layout(step: Map<string, number>, parent: Map<string, string>) {
     return pos
 }
 
+interface SimNode {
+    id: string
+    x: number
+    y: number
+    fx?: number
+    fy?: number
+    /** target distance from the centre */
+    r: number
+}
+
+/**
+ * Force layout (d3-force): a radial force pulls every person to its target distance from the centre,
+ * collision keeps circles and labels apart, a weak link to the parent keeps subtrees in their sector.
+ * Target distance: ring of its step, pulled inwards by the number of charters shared with the person
+ * it was reached from (most shared charters in this graph: 45 % nearer than the ring).
+ */
+async function forceLayout(step: Map<string, number>, parent: Map<string, string>, strength: (c: string) => number) {
+    const { forceSimulation, forceRadial, forceCollide, forceLink, forceManyBody } = await import("d3-force")
+    const start = radialTree(step, parent)
+    const max = Math.max(1, ...[...parent.keys()].map(strength))
+    const pull = (c: string) => (max > 1 ? Math.sqrt(Math.max(0, strength(c) - 1) / (max - 1)) : 0)
+    const nodes: SimNode[] = [...step].map(([id, s]) => ({
+        id,
+        ...start.get(id)!,
+        r: s === 0 ? 0 : (s - 0.45 * pull(id)) * RING,
+    }))
+    nodes[0]!.fx = 0
+    nodes[0]!.fy = 0
+    const links = [...parent].map(([c, p]) => ({ source: p, target: c }))
+    const sim = forceSimulation(nodes)
+        .force("radial", forceRadial<SimNode>((n) => n.r).strength(0.8))
+        .force("collide", forceCollide<SimNode>(RING * 0.16).iterations(2))
+        .force(
+            "charge",
+            forceManyBody<SimNode>()
+                .strength(-RING * 0.4)
+                .distanceMax(RING * 1.2),
+        )
+        .force(
+            "link",
+            forceLink<SimNode, { source: string; target: string }>(links)
+                .id((n) => n.id)
+                .distance(RING)
+                .strength(0.05),
+        )
+        .stop()
+    sim.tick(300)
+    return new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }]))
+}
+
 const plural = (n: number) => `${n} shared charter${n === 1 ? "" : "s"}`
 
+let renderId = 0
 async function render() {
     if (!container.value) return
-    const [
-        { default: Graph },
-        { default: SigmaCtor },
-        adj,
-        { EdgeDoubleArrowProgram },
-        { DEFAULT_EDGE_PROGRAM_CLASSES },
-    ] = await Promise.all([
+    const id = ++renderId
+    const [{ default: Graph }, { default: SigmaCtor }, adj, { pathLine, extremityArrow }] = await Promise.all([
         import("graphology"),
         import("sigma"),
         loadNetwork(),
         import("sigma/rendering"),
-        import("sigma/settings"),
     ])
+    const { step, parent } = explore(adj)
+    const shared = (c: string) => adj.get(parent.get(c)!)?.get(c)?.charters ?? 0
+    const pos = await forceLayout(step, parent, shared)
+    if (id !== renderId || !container.value) return // a newer render started meanwhile
     sigma?.kill()
+    tip.value = undefined
     readPalette()
 
-    const { step, parent } = explore(adj)
-    const pos = layout(step, parent)
     const counts = Array.from({ length: props.depth }, (_, i) => [...step.values()].filter((s) => s === i + 1).length)
     emit("stats", counts)
 
@@ -160,9 +223,12 @@ async function render() {
     for (const [n, s] of step)
         graph.addNode(n, {
             ...pos.get(n)!,
+            // graph y grows downwards in the layout, upwards in sigma
+            y: -pos.get(n)!.y,
             size: s === 0 ? 14 : Math.max(4, 10 - 2 * s),
-            label: props.names[n] ?? n,
+            label: nameOf(n),
             step: s,
+            sex: sexOf(props.persons[n]?.sex) ?? "",
         })
     // Links drawn: every link of the centre person, and from step 2 on the link to the person each one was
     // reached from. Co-occurrence makes every charter a clique, so drawing all links between shown persons
@@ -180,8 +246,10 @@ async function render() {
         const out = l.relations.some((r) => r.dir === "out")
         const inn = l.relations.some((r) => r.dir === "in")
         const [source, target] = inn && !out ? [b, a] : [a, b]
+        const relations = [...new Set(l.relations.map((r) => r.name))].join(", ")
         graph.addEdge(source, target, {
-            type: out && inn ? "doubleArrow" : out || inn ? "arrow" : "line",
+            head: out || inn ? "arrow" : "none",
+            tail: out && inn ? "arrow" : "none",
             // thickness by shared charters (square root, so a few strong ties don't dwarf the rest)
             // (explicit relations at least 2 px, so their arrow heads stay visible)
             size: Math.max(
@@ -189,134 +257,164 @@ async function render() {
                 l.charters ? 1 + 5 * Math.sqrt((l.charters - 1) / Math.max(1, max - 1)) : 1,
             ),
             explicit: l.relations.length > 0,
-            relations: [...new Set(l.relations.map((r) => r.name))].join(", "),
-            charters: l.charters,
+            relations,
+            // relation names always, the charter count on hover
+            details: [relations, l.charters ? plural(l.charters) : ""].filter(Boolean).join(" · "),
         })
     }
 
+    const lit = (_: unknown, s: { isHovered: boolean; isHighlighted: boolean; isLabelHovered: boolean }) =>
+        s.isHovered || s.isHighlighted || s.isLabelHovered
     sigma = new SigmaCtor(graph, container.value, {
-        renderEdgeLabels: true,
-        enableEdgeEvents: true,
-        labelRenderedSizeThreshold: 0,
-        labelFont: "system-ui, -apple-system, Segoe UI, sans-serif",
-        labelSize: 13,
-        edgeLabelSize: 12,
-        stagePadding: 80,
-        labelDensity: 1,
-        labelGridCellSize: 40,
-        minCameraRatio: 0.05,
-        maxCameraRatio: 3,
-        ...themeSettings(),
-        defaultDrawNodeHover: drawHover,
-        defaultDrawNodeLabel: drawLabel,
-        edgeProgramClasses: { ...DEFAULT_EDGE_PROGRAM_CLASSES, doubleArrow: EdgeDoubleArrowProgram },
-        nodeReducer: (node, a) => ({
-            ...a,
-            color: a.step === 0 ? palette.accent : palette.person,
-            size: node === props.highlight ? a.size * 1.5 : a.size,
-            highlighted: node === props.highlight,
-            zIndex: node === props.highlight ? 1 : 0,
-        }),
-        edgeReducer: (edge, a) => {
-            const hovered = edge === hoveredEdge
-            const ends = graph.extremities(edge)
-            const lit = hovered || (!!props.highlight && ends.includes(props.highlight))
-            const text = [a.relations, a.charters ? plural(a.charters) : ""].filter(Boolean).join(" · ")
-            return {
-                ...a,
-                color: lit ? palette.muted : a.explicit ? palette.accent : palette.border,
-                // relation names always, the charter count on hover
-                label: hovered ? text : a.relations || undefined,
-                forceLabel: hovered,
-                zIndex: lit ? 1 : 0,
-            }
+        primitives: {
+            nodes: {
+                label: {
+                    font: { family: "system-ui, -apple-system, Segoe UI, sans-serif", weight: "600", size: 13 },
+                    margin: 4,
+                },
+            },
+            edges: {
+                paths: [pathLine()],
+                extremities: [extremityArrow()],
+            },
         },
-        zIndex: true,
+        settings: {
+            // v4 measures sizes in graph units by default; these sizes are pixels
+            itemSizesReference: "screen",
+            renderEdgeLabels: true,
+            enableEdgeEvents: true,
+            // hovering or clicking a name acts like hovering or clicking its circle
+            nodeLabelEvents: "extend",
+            labelRenderedSizeThreshold: 0,
+            stagePadding: 60,
+            labelDensity: 1,
+            labelGridCellSize: 40,
+            minCameraRatio: 0.05,
+            maxCameraRatio: 3,
+        },
+        styles: {
+            nodes: [
+                {
+                    x: { attribute: "x" },
+                    y: { attribute: "y" },
+                    size: { attribute: "size" },
+                    label: { attribute: "label" },
+                    color: (a) =>
+                        a.step === 0
+                            ? palette.accent
+                            : a.sex === "male"
+                              ? palette.male
+                              : a.sex === "female"
+                                ? palette.female
+                                : palette["sex-unknown"],
+                    labelColor: () => palette.text,
+                    labelVisibility: (a) => (a.step === 0 ? "visible" : "auto"),
+                    cursor: (a) => (a.step === 0 ? "default" : "pointer"),
+                    labelCursor: (a) => (a.step === 0 ? "default" : "pointer"),
+                    depth: "nodes",
+                    backdropVisibility: "hidden",
+                    backdropColor: () => palette.surface,
+                    backdropBorderColor: () => palette.muted,
+                    backdropBorderWidth: 1,
+                    backdropShadowColor: "rgba(0, 0, 0, 0.15)",
+                    backdropShadowBlur: 6,
+                    backdropPadding: 4,
+                    backdropCornerRadius: 4,
+                },
+                {
+                    // hover (circle or name) or highlight from the list: bigger, label on a box, on top
+                    when: lit,
+                    then: {
+                        size: (a) => a.size * 1.4,
+                        labelVisibility: "visible",
+                        backdropVisibility: "visible",
+                        depth: "topNodes",
+                    },
+                },
+            ],
+            edges: [
+                {
+                    size: { attribute: "size" },
+                    color: (a) => (a.explicit ? palette.accent : palette.border),
+                    head: { attribute: "head" },
+                    tail: { attribute: "tail" },
+                    label: { attribute: "relations" },
+                    labelColor: () => palette.accent,
+                    labelSize: 12,
+                    depth: "edges",
+                },
+                {
+                    when: lit,
+                    then: {
+                        color: () => palette.muted,
+                        label: { attribute: "details" },
+                        labelVisibility: "visible",
+                        depth: "topEdges",
+                    },
+                },
+            ],
+        },
     })
+    // frame: centre person in the middle, and at least one ring around it (a graph of two persons
+    // would otherwise be stretched over the whole pane)
+    const reach = Math.max(RING, ...[...pos.values()].map((p) => Math.max(Math.abs(p.x), Math.abs(p.y))))
+    sigma.setCustomBBox({ x: [-reach, reach], y: [-reach, reach] })
+    applyHighlight(props.highlight)
 
     sigma.on("clickNode", ({ node, event }) => {
         if (node === props.id) return
         const e = event.original as MouseEvent
-        if (e.ctrlKey || e.metaKey) emit("select", node)
-        else emit("hide", node)
+        if (e.altKey) emit("hide", node)
+        else emit("select", node, e.ctrlKey || e.metaKey)
     })
     sigma.on("enterNode", ({ node }) => {
-        emit("hover", node === props.id ? undefined : node)
-        container.value!.style.cursor = node === props.id ? "" : "pointer"
+        if (node === props.id) return
+        emit("hover", node)
+        showTip(node)
     })
     sigma.on("leaveNode", () => {
         emit("hover", undefined)
-        container.value!.style.cursor = ""
+        tip.value = undefined
     })
-    sigma.on("enterEdge", ({ edge }) => {
-        hoveredEdge = edge
-        sigma?.refresh({ skipIndexation: true })
-    })
-    sigma.on("leaveEdge", () => {
-        hoveredEdge = undefined
-        sigma?.refresh({ skipIndexation: true })
+    sigma.getCamera().on("updated", () => {
+        if (tip.value) showTip(tip.value.id)
     })
 }
 
-const themeSettings = () => ({
-    labelColor: { color: palette.text },
-    edgeLabelColor: { color: palette.accent },
-})
+/** Tooltip above the hovered person: name and alternate spellings (only shown when there are some). */
+function showTip(node: string) {
+    if (!sigma) return
+    const a = sigma.getGraph().getNodeAttributes(node)
+    const p = sigma.graphToViewport({ x: a.x, y: a.y })
+    tip.value = { id: node, x: p.x, y: p.y }
+}
 
-type LabelData = { x: number; y: number; size: number; label?: string | null }
-type LabelSettings = { labelSize: number; labelFont: string; labelWeight: string }
-
-/** First name bold, the rest of the name below it in normal weight. */
-function drawLabel(ctx: CanvasRenderingContext2D, data: LabelData, settings: LabelSettings) {
-    if (!data.label) return
-    const { first, rest } = splitName(data.label)
-    const size = settings.labelSize
-    const x = data.x + data.size + 3
-    ctx.fillStyle = palette.text
-    ctx.font = `600 ${size}px ${settings.labelFont}`
-    ctx.fillText(first, x, rest ? data.y - 1 : data.y + size / 3)
-    if (rest) {
-        ctx.font = `400 ${size}px ${settings.labelFont}`
-        ctx.fillText(rest, x, data.y + size)
+/** Highlight a person and its lines (hover in the list next to the graph). */
+let highlighted: string | undefined
+function applyHighlight(node?: string) {
+    if (!sigma) return
+    const graph = sigma.getGraph()
+    if (highlighted && graph.hasNode(highlighted)) {
+        sigma.setNodeState(highlighted, { isHighlighted: false })
+        sigma.setEdgesState(graph.edges(highlighted), { isHighlighted: false })
     }
-}
-
-/** Hover / highlight: label on a surface-coloured box (sigma's default box is always white). */
-function drawHover(ctx: CanvasRenderingContext2D, data: LabelData, settings: LabelSettings) {
-    const size = settings.labelSize
-    const { first, rest } = splitName(data.label ?? "")
-    ctx.font = `600 ${size}px ${settings.labelFont}`
-    let width = ctx.measureText(first).width
-    ctx.font = `400 ${size}px ${settings.labelFont}`
-    width = Math.max(width, ctx.measureText(rest).width) + 8
-    const height = rest ? 2 * size + 10 : size + 10
-    const top = rest ? data.y - size - 4 : data.y - size / 2 - 5
-    ctx.fillStyle = palette.surface
-    ctx.strokeStyle = palette.muted
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.roundRect(
-        data.x - data.size - 3,
-        Math.min(top, data.y - data.size - 3),
-        data.size * 2 + 6 + width,
-        Math.max(height, data.size * 2 + 6),
-        4,
-    )
-    ctx.fill()
-    ctx.stroke()
-    drawLabel(ctx, data, settings)
+    highlighted = node && graph.hasNode(node) ? node : undefined
+    if (highlighted) {
+        sigma.setNodeState(highlighted, { isHighlighted: true })
+        sigma.setEdgesState(graph.edges(highlighted), { isHighlighted: true })
+    }
 }
 
 function onThemeChange() {
     readPalette()
-    sigma?.setSettings(themeSettings())
+    sigma?.refresh()
 }
 
 watch(
     () => props.highlight,
-    () => sigma?.refresh({ skipIndexation: true }),
+    (h) => applyHighlight(h),
 )
-watch(() => [props.id, props.depth, props.hidden.join()], render)
+watch(() => [props.id, props.depth, props.hidden.join(), props.hideUnrelated], render)
 
 onMounted(() => {
     render()
@@ -326,6 +424,7 @@ onMounted(() => {
     media.addEventListener("change", onThemeChange)
 })
 onBeforeUnmount(() => {
+    renderId++
     observer?.disconnect()
     media?.removeEventListener("change", onThemeChange)
     sigma?.kill()
@@ -333,5 +432,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div ref="container" class="person-graph" />
+    <div class="person-graph-wrap">
+        <div ref="container" class="person-graph" />
+        <div
+            v-if="tip && tipPerson?.altNames.length"
+            class="graph-tip"
+            role="tooltip"
+            :style="{ left: `${tip.x}px`, top: `${tip.y}px` }"
+        >
+            <strong>{{ tipPerson.name }}</strong>
+            <span class="muted">also: {{ tipPerson.altNames.join(", ") }}</span>
+        </div>
+    </div>
 </template>

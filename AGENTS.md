@@ -15,7 +15,7 @@ UI language: **English**.
   the output (`.output/public`) is served by **Apache** (`public/.htaccess`).
 - **Build-time XML processing in TypeScript** (`scripts/build-data`, `@xmldom/xmldom`).
   No SaxonJS/XSLT. TEI → JSON in `public/data`, then Nuxt renders from that JSON.
-- **Nuxt 4 / Vue 3.** Icons: **Lucide** (`lucide-vue-next`, slim strokes: `.lucide { stroke-width: 1.5 }`; no other icon sets, no inline SVG icons). Search: plain substring scan in `shared/search.ts` (no search library; see Search). Map: **MapLibre** (planned). Person network: **sigma.js 3** (+ graphology), loaded client-only.
+- **Nuxt 4 / Vue 3.** Icons: **Lucide** (`lucide-vue-next`, slim strokes: `.lucide { stroke-width: 1.5 }`; no other icon sets, no inline SVG icons). Search: plain substring scan in `shared/search.ts` (no search library; see Search). Map: **MapLibre** (planned). Person network: **sigma.js 4** (+ graphology, layout with **d3-force**), loaded client-only.
 - During prerendering, data is read through `server/api/data/[...path]` (Nitro server assets);
   in the browser, pages use the prerendered payloads. Only the search data (`search.json`) and the person network for the graph (`network.json`) are fetched from `/data/`.
 
@@ -67,7 +67,8 @@ UI language: **English**.
 - Catalog layout: "Reset filters" button right of the page title (greyed out when nothing is set); the search field
   (magnifier icon) fills the first row; person, place and action filters share the second row evenly. Filters are
   `FilterSelect` dropdowns with their own text filter (same matching rule as the search) and keyboard support.
-- The persons list is grouped by first letter (diacritics folded), with a letter jump bar; a Lucide icon before
+- The persons list uses the same `SearchField` (full width) and matching rule as the charter search, over names and
+  alternate spellings. It is grouped by first letter (diacritics folded), with a letter jump bar; a Lucide icon before
   each name shows `@sex` (Mars, Venus, faint dashed circle when unknown).
 
 ## UI conventions (charter view)
@@ -105,16 +106,26 @@ UI language: **English**.
 
 - The person page toggles **Charters | Graph** (`?view=graph`, pushes a history entry).
 - Graph = network around the person, **1–5 steps** (`?depth=`, default 1). A link is co-occurrence in a charter
-  or an explicit `relation` from the index. Layout is a radial tree: ring = step, each person sits in the sector of
-  the person it was reached from (strongest link). Drawn lines: all links of the centre person, and from step 2 on
+  or an explicit `relation` from the index. Drawn lines: all links of the centre person, and from step 2 on
   only the link each person was reached through (all links would be a hairball: every charter is a clique).
+- Layout: **d3-force** (sigma has no layout of its own; ForceAtlas2 cannot set a target distance). A radial force puts
+  each person on the ring of its step, pulled inwards by the number of charters it shares with the person it was
+  reached from (more shared charters = nearer the centre person); collision keeps circles apart; it starts from a radial
+  tree so subtrees stay in their sector. The frame always keeps the centre person in the middle.
 - Line thickness = number of shared charters (square-root scale; hover a line for the count). Explicit relations
   are accent-coloured lines labelled with the relation name; directed ones get an arrow head (active → passive),
   at both ends when relations go both ways.
-- Click a person in the graph to hide them (`?hide=a,b`, kept when moving to another person); hidden persons are
-  not followed to further steps. Ctrl/⌘-click opens the person. The list next to the graph has an eye toggle per row.
-- Names in the graph and its list: first word bold, the rest of the name below in normal weight (`splitName`; the
-  index has no separate name parts).
+- Circles by `@sex`: `--male` blue, `--female` pink, `--sex-unknown` grey; the centre person in `--accent`.
+- Click a person (circle or name) to open them, Ctrl/⌘-click opens a new tab, **Alt-click hides** them (`?hide=a,b`,
+  kept when moving to another person); hidden persons are not followed to further steps. Hovering a circle or its name
+  highlights the person and its lines; so does hovering a row in the list.
+- "Hide unrelated" (`?unrelated=hide`, push) follows only explicit relations, so persons that only share charters drop out.
+- The list next to the graph has three sections: **Related** (explicit relation), **Unrelated** (only shared charters),
+  **Hidden** (all of `?hide=`, with "Show all"); each row has an eye toggle and a dot in the person's graph colour.
+- Names: the first `<name>` is the name; further `<name>`s are alternate spellings with no extra information, shown
+  only on hover (graph tooltip, `title` in lists) and matched by the persons search.
+- sigma 4: options are `{ primitives, styles, settings }` (settings are nested!). Sizes are pixels only with
+  `itemSizesReference: "screen"`; the v4 default (`"positions"`) blows every circle up to fill the canvas.
 - The graph reads `network.json` (compact, persons only, written by the build) in the browser. The list of direct
   connections next to it is computed from `relations.json` while prerendering (`useEgoNetwork`), so it is in the
   page payload. Graph colours are read from the CSS tokens and re-read when the theme changes.
