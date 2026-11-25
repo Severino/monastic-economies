@@ -114,6 +114,17 @@ const TeiNodes = defineComponent({
                 case "choice":
                     // parallel encodings: show the first one
                     return n.c?.[0] ? render(n.c[0]) : null
+                case "list":
+                    return h("ul", { class: "tei-list" }, kids(n))
+                case "item":
+                    return h("li", { class: "tei-item" }, kids(n))
+                case "locus":
+                    // empty <locus from to/>: show the reference itself
+                    return h(
+                        "span",
+                        { class: "tei-locus" },
+                        n.c?.length ? kids(n) : `fol. ${[a.from, a.to].filter(Boolean).join("–")}`,
+                    )
                 case "metamark":
                     return h("span", { class: "tei-metamark" }, kids(n))
                 case "rs":

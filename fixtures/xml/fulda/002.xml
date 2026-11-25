@@ -34,7 +34,7 @@
 							</altIdentifier>
 						</msIdentifier>
 						<msContents>
-							<summary>Talafot.</summary>
+							<summary><choice><seg xml:lang="de">Talafot.</seg><seg xml:lang="en">Tobalu sefim pocer.</seg></choice></summary>
 							<msItem>
 								<locus from="2v18" to="3r19"/>
 								<textLang>latin</textLang>
