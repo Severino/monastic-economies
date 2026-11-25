@@ -62,3 +62,9 @@ function sexOf(s?: string) {
         </section>
     </div>
 </template>
+
+<style lang="css" scoped>
+a {
+    text-decoration: none;
+}
+</style>
