@@ -113,13 +113,17 @@ UI language: **English**.
   of the centre person, from step 2 on the link each person was reached through, and explicit relations between any
   two persons shown (all co-occurrences would be a hairball: every charter is a clique).
 - Layout: **d3-force** (sigma has no layout of its own; ForceAtlas2 cannot set a target distance), started from a
-  radial tree. The centre person is fixed in the middle (it cannot be dragged; dragging it pans); **everyone else is pushed outwards** with the same force
-  (`forceOutward`, from the centre person at 0, 0), nothing pulls towards the centre: only the lines hold persons in (everyone is connected, so nobody
-  drifts away). A line holds at about distance + push / strength: relation lines are stiff and at least as long as
-  their label; charter lines are stiffer the more charters they stand for. So close persons stay near the centre,
-  weak ties drift out, and a person with a single relation hangs beyond its partner. When the graph has to be zoomed
-  out to fit the pane, relation lines are lengthened by the zoom factor. Repulsion (many-body) has no distance
-  limit, so clusters push each other apart and loose persons move to the free side.
+  radial tree. The centre person is fixed in the middle (it cannot be dragged; dragging it pans) and is the
+  **repulsion centre**: everyone is pushed away from it (`forceOutward`) and from each other (many-body, no distance
+  limit). **Only lines attract**:
+  - relation lines are springs, as long as their label plus room;
+  - charter lines (to the centre, or to the person reached from) are **ropes** (`forceRope`, a hard maximum
+    distance, slack when shorter, never pushing): shorter the more charters they stand for, so close persons stay
+    near and weak ties drift out.
+  - **Islands** (persons joined by relations, not counting the centre) hang from one rope only: none if a member
+    is related to the centre, else the rope of the member nearest the centre with the most relations. The other
+    members' charter lines are drawn but pull nothing, so e.g. a person's dependants form a ring on the far side of
+    that person, away from everyone else, also when the person is dragged further out.
 - The simulation stays live (`useLiveLayout`): a dragged person stays **pinned** where it is dropped (ring around the
   circle), a double click releases it; pins are stored per diagram and person in `localStorage`
   (`monastic-economies:pins:graph:<id>`, `…:relations:<id>`). A changed graph (steps, hiding) starts from the

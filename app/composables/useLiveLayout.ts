@@ -135,3 +135,34 @@ export function forceOutward<N extends LiveNode>(push: number): Force<N, undefin
     }
     return force
 }
+
+/** A line that only pulls when it is stretched beyond its length (b is the person it holds). */
+export interface Rope<N extends LiveNode> {
+    a: N
+    b: N
+    length: number
+}
+
+/**
+ * Ropes (d3-force custom force, register it last): a hard maximum distance. A rope is slack while shorter
+ * than its length, so it never pushes; when the held person `b` would end up further from `a`, its velocity is
+ * cut so that it stops on the rope's circle. (A soft spring would give way to everything pushing outwards, and
+ * a whole island hanging on one rope would drift far away.)
+ */
+export function forceRope<N extends LiveNode>(ropes: Rope<N>[]): Force<N, undefined> {
+    const force = () => {
+        for (const { a, b, length } of ropes) {
+            if (b.fx != null) continue
+            const ax = a.x + (a.vx ?? 0)
+            const ay = a.y + (a.vy ?? 0)
+            const dx = b.x + (b.vx ?? 0) - ax
+            const dy = b.y + (b.vy ?? 0) - ay
+            const d = Math.hypot(dx, dy)
+            if (d <= length) continue
+            b.vx = ax + (dx * length) / d - b.x
+            b.vy = ay + (dy * length) / d - b.y
+        }
+    }
+    force.initialize = () => {}
+    return force
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Person, PersonNetwork } from "#shared/types"
-import type { LiveNode } from "~/composables/useLiveLayout"
+import type { LiveNode, Rope } from "~/composables/useLiveLayout"
 
 // Network around one person, up to `depth` steps away; one component for both diagrams:
 // - "charters": a link is a shared charter or an explicit relation (the Charter Graph)
@@ -218,53 +218,81 @@ async function render() {
     )
     simNodes.get(props.id)!.anchor = { x: 0, y: 0 }
     layout.applyPins(simNodes)
-    // Everyone is pushed outwards with the same force; a line holds its persons at about
-    // distance + push / strength. Relation lines are stiff (their persons stay together, as long as the
-    // label needs); charter lines are softer the fewer charters they stand for, so weak ties end up further out.
+    // The centre person repels everyone (forceOutward) and everyone repels everyone (many-body, any distance);
+    // only lines attract. Relation lines are springs, long enough for their label plus room. Charter lines are
+    // ropes: they only pull when stretched beyond their length, which is shorter the more charters they stand for
+    // (close persons stay near, weak ties drift out), and they never pull a person inwards that is held by a relation.
     const PUSH = 12
-    const links: SimLink[] = [...pairs.values()].map(([a, b]) => {
-        const rel = related(a, b)
-        return {
-            source: a,
-            target: b,
-            distance: Math.max(rel ? minLength(a, b) : 0, ring * (0.7 - 0.3 * tie(a, b))),
-            strength: rel ? 0.8 : 0.04 + 0.3 * tie(a, b),
+    const springs: SimLink[] = [...pairs.values()]
+        .filter(([a, b]) => related(a, b))
+        .map(([a, b]) => ({ source: a, target: b, distance: minLength(a, b) + 40, strength: 0.8 }))
+
+    // Islands: persons joined by relations, not counting the centre person. An island hangs from one rope only
+    // (from its anchor: a member related to the centre needs none; else the member nearest the centre with the
+    // most relations), so its other members are free to move to the far side, away from everyone else.
+    const islandOf = new Map<string, string[]>()
+    for (const n of step.keys()) {
+        if (n === props.id || islandOf.has(n)) continue
+        const members: string[] = []
+        const visit = (m: string) => {
+            if (islandOf.has(m)) return
+            islandOf.set(m, members)
+            members.push(m)
+            for (const [o, l] of adj.get(m) ?? [])
+                if (o !== props.id && step.has(o) && l.relations.length && pairs.has(o < m ? `${o} ${m}` : `${m} ${o}`))
+                    visit(o)
         }
-    })
+        visit(n)
+    }
+    const degree = (n: string) => springs.filter((l) => l.source === n || l.target === n).length
+    const anchorOf = new Map<string[], string | undefined>()
+    for (const members of new Set(islandOf.values())) {
+        if (members.length === 1) anchorOf.set(members, members[0])
+        else if (members.some((m) => related(props.id, m))) anchorOf.set(members, undefined)
+        else
+            anchorOf.set(
+                members,
+                [...members].sort(
+                    (a, b) =>
+                        step.get(a)! - step.get(b)! ||
+                        degree(b) - degree(a) ||
+                        charters(parent.get(b)!, b) - charters(parent.get(a)!, a),
+                )[0],
+            )
+    }
+    // a charter line holds the person further out (the other end is the centre or the one it was reached from)
+    const ropes: Rope<SimNode>[] = []
+    for (const [a, b] of pairs.values()) {
+        if (related(a, b)) continue
+        const held = a === props.id || parent.get(b) === a ? b : a
+        if (anchorOf.get(islandOf.get(held)!) !== held) continue
+        ropes.push({
+            a: simNodes.get(a === held ? b : a)!,
+            b: simNodes.get(held)!,
+            length: ring * (0.8 + 0.8 * (1 - tie(a, b))),
+        })
+    }
     const sim = d3
         .forceSimulation([...simNodes.values()])
         .force("out", forceOutward<SimNode>(PUSH))
         .force("collide", d3.forceCollide<SimNode>((n) => n.radius).iterations(3))
-        // repulsion over any distance, so clusters push each other apart and loose persons move to the free side
         .force("charge", d3.forceManyBody<SimNode>().strength(-80))
         .force(
             "link",
             d3
-                .forceLink<SimNode, SimLink>(links)
+                .forceLink<SimNode, SimLink>(springs)
                 .id((n) => n.id)
                 .distance((l) => l.distance)
                 .strength((l) => l.strength)
                 .iterations(3),
         )
+        .force("ropes", forceRope<SimNode>(ropes))
         .stop()
     // settle before showing (persons already shown barely move), then keep the simulation for dragging
     const changed = [...step.keys()].some((n) => !lastPos.has(n))
     sim.alpha(changed ? 1 : 0.3)
     sim.tick(300)
-    // A graph bigger than the pane is shown zoomed out, which shortens the lines but not their labels.
-    // So once more with the relation lines between other persons lengthened by that zoom factor.
     const extent = (axis: "x" | "y") => Math.max(...[...simNodes.values()].map((p) => Math.abs(p[axis]))) + 40
-    const f = Math.min(
-        1,
-        (container.value.clientWidth - 100) / 2 / extent("x"),
-        (container.value.clientHeight - 100) / 2 / extent("y"),
-    )
-    if (f < 0.98) {
-        for (const l of links) if (l.strength === 0.8) l.distance /= f
-        sim.force<import("d3-force").ForceLink<SimNode, SimLink>>("link")!.links(links)
-        sim.alpha(0.5)
-        sim.tick(200)
-    }
 
     const graph = new Graph()
     for (const [n, s] of step)
