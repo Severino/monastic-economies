@@ -241,7 +241,11 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
             applyLit()
         })
         s.on("afterRender", placeTips)
-        s.on("nodeDragStart", ({ node }) => on.drag?.(node, "start"))
+        s.on("nodeDragStart", ({ node, preventSigmaDefault }) => {
+            // the centre person stays in the middle (everyone else is laid out around it)
+            if (s.getGraph().getNodeAttribute(node, "centre")) return preventSigmaDefault()
+            on.drag?.(node, "start")
+        })
         s.on("nodeDrag", ({ node }) => on.drag?.(node, "move"))
         s.on("nodeDragEnd", ({ node }) => on.drag?.(node, "end"))
         sigma = s

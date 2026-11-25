@@ -235,7 +235,8 @@ async function render() {
         .forceSimulation([...simNodes.values()])
         .force("out", forceOutward<SimNode>(PUSH))
         .force("collide", d3.forceCollide<SimNode>((n) => n.radius).iterations(3))
-        .force("charge", d3.forceManyBody<SimNode>().strength(-80).distanceMax(250))
+        // repulsion over any distance, so clusters push each other apart and loose persons move to the free side
+        .force("charge", d3.forceManyBody<SimNode>().strength(-80))
         .force(
             "link",
             d3

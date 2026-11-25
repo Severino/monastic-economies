@@ -56,7 +56,8 @@ export function useLiveLayout<N extends LiveNode, L>(pinKey: () => string) {
     function applyPins(ns: Map<string, N>) {
         loadPins()
         for (const n of ns.values()) {
-            const p = pins[n.id] ?? n.anchor
+            // an anchored person (the centre) is never moved, whatever an older pin says
+            const p = n.anchor ?? pins[n.id]
             if (!p) continue
             n.x = n.fx = p.x
             n.y = n.fy = p.y
@@ -69,7 +70,7 @@ export function useLiveLayout<N extends LiveNode, L>(pinKey: () => string) {
         sim = s
         nodes = ns
         graph = g
-        for (const n of ns.values()) g.setNodeAttribute(n.id, "pinned", !!pins[n.id])
+        for (const n of ns.values()) g.setNodeAttribute(n.id, "pinned", !n.anchor && !!pins[n.id])
         s.on("tick", () => {
             g.updateEachNodeAttributes((id, a) => {
                 const p = ns.get(id)
@@ -81,7 +82,7 @@ export function useLiveLayout<N extends LiveNode, L>(pinKey: () => string) {
 
     function drag(id: string, phase: "start" | "move" | "end") {
         const n = nodes.get(id)
-        if (!sim || !n || !graph) return
+        if (!sim || !n || !graph || n.anchor) return
         const a = graph.getNodeAttributes(id)
         n.fx = a.x
         n.fy = a.y
