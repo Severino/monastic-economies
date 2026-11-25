@@ -408,11 +408,12 @@ watch(
     render,
 )
 
-// persons of a sex switched off: faded with their lines, without a new layout (the centre person never)
-const isFaded = (n: string) => n !== props.id && !filters.sexOn(sexCategory(props.persons[n]?.sex))
+// persons of another sex than the one chosen: faded with their lines, without a new layout (the centre person
+// too; it keeps its ring)
+const isFaded = (n: string) => !filters.sexOn(sexCategory(props.persons[n]?.sex))
 let shownGraph: import("graphology").default | undefined
 watch(
-    () => filters.sexOff.value.join(),
+    () => filters.sexShown.value,
     () => {
         const g = shownGraph
         if (!g) return

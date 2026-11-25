@@ -86,6 +86,8 @@ UI language: **English**.
   (coloured when on, grey when off). The glossary slides in over the facsimile.
 - The facsimile pane shows one page, filling the pane; a pager with page tiles at the bottom
   (arrow keys when focused) switches pages and follows the transcript scroll.
+- Choose-one controls (view switch, steps, sex filter) use `RadioGroup.vue` (segmented `view-switch` look,
+  `role="radiogroup"`, arrow keys move the selection).
 - Colours are CSS custom properties on `:root`; reuse them. Dark theme: follows the system by default; the
   theme toggle (right side of the nav bar) sets `data-theme` on `<html>` and stores it in `localStorage`
   (`monastic-economies:theme`). An inline script in `nuxt.config.ts` applies the stored choice before the first
@@ -160,9 +162,9 @@ UI language: **English**.
     Graph. Clicking an entry switches it off/on (`monastic-economies:graph-relations-off`), "Show all" resets. Persons
     are only reached through the link types left on; the rest drop out (and are greyed in the lists). Switching off
     "shared charters" is what "Hide unrelated" used to do.
-  - **Sex filter** (toolbar): Mars / Venus / ? / – toggles (`monastic-economies:graph-sex-off`). "?" = `@sex` given but
-    neither male nor female (e.g. ISO 5218 0 or 9), "–" = no `@sex`. Persons switched off stay in place, drawn in
-    `--graph-faded` with their lines (no new layout); the centre person is never faded.
+  - **Sex filter** (toolbar): a radio group ♂ / ♀ / ? / – (`monastic-economies:graph-sex`): one sex is shown, everyone
+    else is drawn in `--graph-faded` with their lines (no new layout), the centre person too (it keeps its ring).
+    "?" = no `@sex` or neither male nor female (e.g. ISO 5218 0 or 9); "–" = all (the default).
 - The list next to the Charter Graph has three sections: **Related** (explicit relation), **Unrelated** (only shared charters),
   **Hidden** (all of `?hide=`, with "Show all"); each row has an eye toggle and a dot in the person's graph colour.
 - Names: there are no surnames. `<name>` elements (or the `persName` text) are split on commas; the first name is

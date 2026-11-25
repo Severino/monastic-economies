@@ -1543,18 +1543,15 @@ select {
     cursor: default;
 }
 
-/* person graph: sex filter (toolbar) */
-.sex-filter {
-    display: flex;
-    gap: 0.25rem;
-    margin-left: auto;
-}
-
-.graph-toolbar .sex-filter .toggle-btn {
-    margin-left: 0;
-    padding-inline: 0.4rem;
+/* person graph: sex filter (toolbar, radio group) */
+.graph-toolbar .sex-filter {
+    margin: 0 0 0 auto;
 }
 
 .graph-toolbar .hidden-info + .sex-filter {
     margin-left: 0;
+}
+
+.sex-filter button {
+    padding: 0.3rem 0.55rem;
 }

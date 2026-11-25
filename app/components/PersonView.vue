@@ -94,12 +94,21 @@ const hiddenCount = computed(() => hidden.value.filter((h) => h !== props.id).le
 
 // legend (link types followed) and sex filter of the graphs: shared by all persons, kept in localStorage
 const filters = useGraphFilters()
-const sexFilter: { sex: SexCategory; icon: Component; title: string }[] = [
-    { sex: "male", icon: Mars, title: "Male" },
-    { sex: "female", icon: Venus, title: "Female" },
-    { sex: "unknown", icon: CircleQuestionMark, title: "Sex unknown" },
-    { sex: "none", icon: Minus, title: "Sex not recorded" },
+// sex shown in the graphs (everyone else is faded); "–" = all
+const sexOptions: { value: SexCategory | "all"; icon: Component; title: string }[] = [
+    { value: "male", icon: Mars, title: "Male only (others faded)" },
+    { value: "female", icon: Venus, title: "Female only (others faded)" },
+    { value: "unknown", icon: CircleQuestionMark, title: "Sex unknown only (others faded)" },
+    { value: "all", icon: Minus, title: "All persons" },
 ]
+const viewOptions = computed(() => [
+    { value: "charters" as const, icon: List, label: `Charters (${entries.value.length})` },
+    { value: "graph" as const, icon: Share2, label: `Charter Graph (${neighbors.value?.length ?? 0})` },
+    { value: "relations" as const, icon: Network, label: `Relations Graph (${treeSize.value})` },
+])
+const depthOptions = computed(() =>
+    Array.from({ length: maxDepth.value }, (_, i) => ({ value: i + 1, label: String(i + 1) })),
+)
 /** a neighbour is in the Charter Graph through a link type the legend leaves on */
 const followed = (n: EgoNeighbor) =>
     (filters.relationOn(CHARTERS) && n.charters.length > 0) ||
@@ -195,17 +204,13 @@ const sexIcon = (s?: string) => {
             <p v-if="person.socecStatus">Status: {{ person.socecStatus }}</p>
             <TeiNodes v-if="person.note" :nodes="person.note" />
 
-            <div class="view-switch" role="group" aria-label="View">
-                <button type="button" :class="{ active: view === 'charters' }" @click="setView('charters')">
-                    <List :size="16" /> Charters ({{ entries.length }})
-                </button>
-                <button type="button" :class="{ active: view === 'graph' }" @click="setView('graph')">
-                    <Share2 :size="16" /> Charter Graph ({{ neighbors?.length ?? 0 }})
-                </button>
-                <button type="button" :class="{ active: view === 'relations' }" @click="setView('relations')">
-                    <Network :size="16" /> Relations Graph ({{ treeSize }})
-                </button>
-            </div>
+            <RadioGroup
+                class="person-views"
+                :model-value="view"
+                :options="viewOptions"
+                label="View"
+                @update:model-value="setView"
+            />
 
             <template v-if="view === 'graph'">
                 <p v-if="!neighbors?.length" class="muted">No connections to other persons.</p>
@@ -344,18 +349,13 @@ const sexIcon = (s?: string) => {
         <section v-if="view !== 'charters'" class="pane graph-pane">
             <div class="graph-toolbar">
                 <span class="muted small">Steps</span>
-                <div class="view-switch depth-switch" role="group" aria-label="Steps from this person">
-                    <button
-                        v-for="d in maxDepth"
-                        :key="d"
-                        type="button"
-                        :class="{ active: d === depth }"
-                        :aria-pressed="d === depth"
-                        @click="setDepth(d)"
-                    >
-                        {{ d }}
-                    </button>
-                </div>
+                <RadioGroup
+                    class="depth-switch"
+                    :model-value="depth"
+                    :options="depthOptions"
+                    label="Steps from this person"
+                    @update:model-value="setDepth"
+                />
                 <span class="muted small">{{ shown }} person{{ shown === 1 ? "" : "s" }}</span>
                 <button
                     v-if="hiddenCount"
@@ -366,20 +366,12 @@ const sexIcon = (s?: string) => {
                 >
                     <EyeOff :size="16" /> {{ hiddenCount }} person{{ hiddenCount === 1 ? "" : "s" }} hidden
                 </button>
-                <div class="sex-filter" role="group" aria-label="Persons by sex (others are faded)">
-                    <button
-                        v-for="f in sexFilter"
-                        :key="f.sex"
-                        type="button"
-                        class="toggle-btn"
-                        :class="{ off: !filters.sexOn(f.sex) }"
-                        :aria-pressed="filters.sexOn(f.sex)"
-                        :title="`${f.title}: ${filters.sexOn(f.sex) ? 'shown, click to fade' : 'faded, click to show'}`"
-                        @click="filters.toggleSex(f.sex)"
-                    >
-                        <component :is="f.icon" :size="16" />
-                    </button>
-                </div>
+                <RadioGroup
+                    v-model="filters.sexShown.value"
+                    class="sex-filter"
+                    :options="sexOptions"
+                    label="Persons by sex (others are faded)"
+                />
             </div>
             <p v-if="view === 'relations' && !treeSize" class="muted graph-empty">
                 {{ person.name }} has no explicit relations in the index.
@@ -406,16 +398,16 @@ const sexIcon = (s?: string) => {
                 related persons together, beyond the person they hang on. Lines: links of {{ person.name }}, from step 2
                 on the link each person was reached through, and relations among the persons shown. Thickness: shared
                 charters. <span class="accent">Coloured lines</span>: explicit relations from the index, arrow =
-                direction. The legend (bottom right) picks the links followed, the sex buttons above fade persons; both
-                are kept for every person. Drag a person to pin them (double-click releases), click to select,
+                direction. The legend (bottom right) picks the links followed, the sex switch above fades everyone else;
+                both are kept for every person. Drag a person to pin them (double-click releases), click to select,
                 Ctrl/⌘-click to open, Alt-click to hide (with everyone reached only through them).
             </p>
             <p v-else class="graph-legend muted small">
                 Persons connected to {{ person.name }} through relations from the index, followed recursively; shared
                 charters are ignored. Arrows point from the active to the passive side of a relation (e.g. lord →
-                vassal). The legend (bottom right) picks the relations followed, the sex buttons above fade persons;
-                both are kept for every person. Drag a person to pin them (double-click releases), click to select,
-                Ctrl/⌘-click to open, Alt-click to hide.
+                vassal). The legend (bottom right) picks the relations followed, the sex switch above fades everyone
+                else; both are kept for every person. Drag a person to pin them (double-click releases), click to
+                select, Ctrl/⌘-click to open, Alt-click to hide.
             </p>
         </section>
         <section v-else class="pane preview">
