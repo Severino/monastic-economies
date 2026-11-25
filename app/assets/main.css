@@ -28,6 +28,8 @@
     --sex-unknown: #9b968d;
     /* persons and lines filtered out (e.g. by sex): drawn faintly */
     --graph-faded: #e3dfd8;
+    /* person graph: explicit relations (lines, arrows, labels, legend) */
+    --relation: #7a3e1d;
     /* relation names on the diagram lines */
     --relation-chip: #f4e8df;
     --font-text: "Source Serif 4 Variable", serif;
@@ -62,6 +64,7 @@
         --female: #f08fbf;
         --sex-unknown: #8a857c;
         --graph-faded: #4a4742;
+        --relation: #e0a37c;
         --relation-chip: #3b2c22;
     }
 } */
@@ -88,6 +91,7 @@
     --female: #f08fbf;
     --sex-unknown: #8a857c;
     --graph-faded: #4a4742;
+    --relation: #e0a37c;
     --relation-chip: #3b2c22;
 }
 
@@ -1412,7 +1416,7 @@ select {
 
 .neighbor .relations,
 .graph-legend .accent {
-    color: var(--accent);
+    color: var(--relation);
     font-size: 0.85em;
 }
 
@@ -1573,7 +1577,7 @@ select {
     width: 1.1rem;
     height: 3px;
     border-radius: 2px;
-    background: var(--accent);
+    background: var(--relation);
 }
 
 .legend-entry.charters .swatch {

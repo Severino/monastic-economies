@@ -12,7 +12,7 @@ import { sexCategory } from "~/utils/person"
 // each one was reached from) are stiffer the more charters they share, so close persons stay near and
 // weak ties drift out; relation lines are stiff and as long as their label, so a person with a single
 // relation hangs beyond its partner instead of sitting near the centre. Line thickness = shared charters;
-// accent lines = explicit relations. Rendered client-only (WebGL); sigma, graphology and d3-force are
+// relation-coloured lines = explicit relations. Rendered client-only (WebGL); sigma, graphology and d3-force are
 // imported lazily so they stay out of SSR. Interaction: see usePersonSigma and useLiveLayout.
 const props = defineProps<{
     id: string
