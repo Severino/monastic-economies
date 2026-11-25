@@ -55,7 +55,7 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
         text: "",
         muted: "",
         border: "",
-        accent: "",
+        relation: "",
         surface: "",
         "relation-chip": "",
         male: "",
@@ -63,10 +63,20 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
         "sex-unknown": "",
         "graph-faded": "",
     }
+    // sigma only parses hex, rgb()/rgba() and named colours; anything else (hsl(), oklch(), color-mix())
+    // silently becomes black. A 2D canvas normalises any CSS colour to hex or rgba().
+    let swatch: CanvasRenderingContext2D | null | undefined
+    function toSigmaColor(css: string) {
+        swatch ??= document.createElement("canvas").getContext("2d")
+        if (!swatch || !css) return css
+        swatch.fillStyle = "#000"
+        swatch.fillStyle = css
+        return swatch.fillStyle as string
+    }
     function readPalette() {
         const s = getComputedStyle(document.documentElement)
         for (const k of Object.keys(palette) as (keyof typeof palette)[])
-            palette[k] = s.getPropertyValue(`--${k}`).trim()
+            palette[k] = toSigmaColor(s.getPropertyValue(`--${k}`).trim())
     }
 
     // ---- highlighted persons: hovered in the diagram, hovered in the list, selected --------
@@ -209,12 +219,13 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
                 edges: [
                     {
                         size: { attribute: "size" },
-                        color: (a) => (a.faded ? palette["graph-faded"] : a.explicit ? palette.accent : palette.border),
+                        color: (a) =>
+                            a.faded ? palette["graph-faded"] : a.explicit ? palette.relation : palette.border,
                         head: { attribute: "head" },
                         tail: { attribute: "tail" },
                         // relation names on a solid background in the page's surface colour
                         label: { attribute: "relations" },
-                        labelColor: (a) => (a.faded ? palette.muted : palette.accent),
+                        labelColor: (a) => (a.faded ? palette.muted : palette.relation),
                         labelBackgroundColor: (a) => (a.faded ? palette["graph-faded"] : palette["relation-chip"]),
                         labelBackgroundPadding: 5,
                         labelSize: 12,
@@ -227,7 +238,7 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
                         when: isLit,
                         then: {
                             color: (a) =>
-                                a.faded ? palette["graph-faded"] : a.explicit ? palette.accent : palette.muted,
+                                a.faded ? palette["graph-faded"] : a.explicit ? palette.relation : palette.muted,
                             depth: "topEdges",
                         },
                     },

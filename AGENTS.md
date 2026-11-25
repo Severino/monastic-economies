@@ -147,7 +147,7 @@ UI language: **English**.
   (`monastic-economies:pins:graph:<id>`, `…:relations:<id>`). A changed graph (steps, hiding) starts from the
   previous positions.
 - Line thickness = number of shared charters (square-root scale). Explicit relations
-  are accent-coloured lines labelled with the relation names as chips (`--relation-chip` background, padding; sigma
+  are lines in `--relation` (own token, not `--accent`, which is too dark for thin lines) labelled with the relation names as chips (`--relation-chip` background, padding; sigma
   4 draws edge label backgrounds without rounded corners); one line per pair with all names, directed ones get an
   arrow head (active → passive), at both ends when relations go both ways. Relation labels are forced visible
   (`labelVisibility: "visible"`): sigma 4 otherwise only labels edges whose two nodes show their labels, so zooming
