@@ -352,7 +352,10 @@ async function render() {
             relations: relationText(a, b),
         })
     }
-    layout.attach(sim, simNodes, graph, () => {
+    // who hangs on whom (they move along when that person is dragged)
+    const hangers = new Map<string, string[]>()
+    for (const f of fans) hangers.set(f.hub.id, [...(hangers.get(f.hub.id) ?? []), f.node.id])
+    layout.attach(sim, simNodes, graph, hangers, () => {
         for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })
     })
     for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })

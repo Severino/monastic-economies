@@ -32,6 +32,10 @@ export function useLiveLayout<N extends LiveNode, L>(pinKey: () => string) {
     let graph: Graph | undefined
     let pins: Record<string, { x: number; y: number }> = {}
     let pinsFor = ""
+    /** who hangs on whom: person -> persons hanging on it (they move along when it is dragged) */
+    let hanging = new Map<string, string[]>()
+    /** while dragging: the persons moving along, with their offset from the dragged person */
+    let carried: { n: N; dx: number; dy: number }[] = []
 
     function loadPins() {
         const key = pinKey()
@@ -65,11 +69,18 @@ export function useLiveLayout<N extends LiveNode, L>(pinKey: () => string) {
     }
 
     /** Connects a settled simulation to the graph sigma shows: every tick moves the nodes. */
-    function attach(s: Simulation<N, L>, ns: Map<string, N>, g: Graph, onTick?: () => void) {
+    function attach(
+        s: Simulation<N, L>,
+        ns: Map<string, N>,
+        g: Graph,
+        hangers: Map<string, string[]>,
+        onTick?: () => void,
+    ) {
         sim?.stop()
         sim = s
         nodes = ns
         graph = g
+        hanging = hangers
         for (const n of ns.values()) g.setNodeAttribute(n.id, "pinned", !n.anchor && !!pins[n.id])
         s.on("tick", () => {
             g.updateEachNodeAttributes((id, a) => {
@@ -80,18 +91,43 @@ export function useLiveLayout<N extends LiveNode, L>(pinKey: () => string) {
         })
     }
 
+    // Dragging pauses the simulation: the dragged person and everyone hanging on it (recursively, except pinned
+    // persons) move together, so their arrangement stays as it is; nobody else moves. On drop the person is pinned
+    // and the simulation goes on gently from there.
     function drag(id: string, phase: "start" | "move" | "end") {
         const n = nodes.get(id)
         if (!sim || !n || !graph || n.anchor) return
         const a = graph.getNodeAttributes(id)
-        n.fx = a.x
-        n.fy = a.y
-        if (phase === "start") sim.alphaTarget(0.3).restart()
+        if (phase === "start") {
+            sim.stop()
+            const seen = new Set([id])
+            const collect = (h: string): string[] =>
+                (hanging.get(h) ?? []).flatMap((c) => {
+                    const m = nodes.get(c)
+                    if (seen.has(c) || !m || m.anchor || pins[c]) return []
+                    seen.add(c)
+                    return [c, ...collect(c)]
+                })
+            carried = collect(id).map((c) => {
+                const m = nodes.get(c)!
+                return { n: m, dx: m.x - n.x, dy: m.y - n.y }
+            })
+        }
+        n.x = n.fx = a.x
+        n.y = n.fy = a.y
+        n.vx = n.vy = 0
+        for (const c of carried) {
+            c.n.x = a.x + c.dx
+            c.n.y = a.y + c.dy
+            c.n.vx = c.n.vy = 0
+            graph.mergeNodeAttributes(c.n.id, { x: c.n.x, y: c.n.y })
+        }
         if (phase === "end") {
+            carried = []
             pins[id] = { x: a.x, y: a.y }
             savePins()
             graph.setNodeAttribute(id, "pinned", true)
-            sim.alphaTarget(0)
+            sim.alpha(0.1).alphaTarget(0).restart()
         }
     }
 

@@ -129,10 +129,12 @@ UI language: **English**.
     (`forceFan`), and its siblings push each other apart, so relatives fan out on the far side. The outward push
     alone cannot do that: it is the same for a person and its relatives, so a group that flew out left its relatives
     hanging on the inner side.
-  - The simulation runs 500 ticks before showing, so it has settled (otherwise dragging reheated it and everything
-    visibly contracted to the true balance).
-- The simulation stays live (`useLiveLayout`): a dragged person stays **pinned** where it is dropped (ring around the
-  circle), a double click releases it; pins are stored per diagram and person in `localStorage`
+  - The simulation runs 500 ticks before showing. It never comes fully to rest (the one-sided fan and rope forces
+    keep it slowly turning while hot), so reheating it would visibly move everything.
+- **Dragging pauses the simulation** (`useLiveLayout`): the dragged person and everyone hanging on it (recursively,
+  except pinned persons) move together, nobody else moves. On drop the person is **pinned** (ring around the circle)
+  and the simulation continues gently (alpha 0.1), so its relatives turn to the far side again; a double click
+  releases a pin; pins are stored per diagram and person in `localStorage`
   (`monastic-economies:pins:graph:<id>`, `…:relations:<id>`). A changed graph (steps, hiding) starts from the
   previous positions.
 - Line thickness = number of shared charters (square-root scale). Explicit relations
