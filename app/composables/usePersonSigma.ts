@@ -9,7 +9,9 @@ import type Sigma from "sigma"
  * centre (boolean). Edge attributes: size, explicit (has a relation), relations (label), head / tail
  * ("arrow" | "none").
  *
- * Node attribute `pinned` (boolean) draws a ring around the circle (see useLiveLayout).
+ * Node attribute `pinned` (boolean) draws a ring around the circle (see useLiveLayout). The centre person keeps
+ * its sex colour and gets a strong ring in the text colour (dark on light, light on dark). `faded` (nodes and edges,
+ * e.g. filtered out by sex) draws them in `--graph-faded`.
  *
  * Interaction: drag a person to move it (double click releases it), click selects it (click again or on the background to clear),
  * Ctrl/⌘-click opens it, Alt-click hides it (where the diagram supports hiding). Hovered, selected and
@@ -59,6 +61,7 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
         male: "",
         female: "",
         "sex-unknown": "",
+        "graph-faded": "",
     }
     function readPalette() {
         const s = getComputedStyle(document.documentElement)
@@ -144,14 +147,14 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
                         size: { attribute: "size" },
                         label: { attribute: "label" },
                         color: (a) =>
-                            a.centre
-                                ? palette.accent
+                            a.faded
+                                ? palette["graph-faded"]
                                 : a.sex === "male"
                                   ? palette.male
                                   : a.sex === "female"
                                     ? palette.female
                                     : palette["sex-unknown"],
-                        labelColor: () => palette.text,
+                        labelColor: (a) => (a.faded ? palette.muted : palette.text),
                         labelPosition: "below",
                         labelVisibility: (a) => (a.centre ? "visible" : "auto"),
                         cursor: "grab",
@@ -190,17 +193,29 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
                             depth: "topNodes",
                         },
                     },
+                    {
+                        // the centre person: a strong ring in the text colour (dark on light, light on dark)
+                        when: (a) => !!a.centre,
+                        then: {
+                            backdropVisibility: "visible",
+                            backdropArea: "node",
+                            backdropColor: () => palette.text,
+                            backdropBorderWidth: 0,
+                            backdropShadowBlur: 0,
+                            backdropPadding: 3,
+                        },
+                    },
                 ],
                 edges: [
                     {
                         size: { attribute: "size" },
-                        color: (a) => (a.explicit ? palette.accent : palette.border),
+                        color: (a) => (a.faded ? palette["graph-faded"] : a.explicit ? palette.accent : palette.border),
                         head: { attribute: "head" },
                         tail: { attribute: "tail" },
                         // relation names on a solid background in the page's surface colour
                         label: { attribute: "relations" },
-                        labelColor: () => palette.accent,
-                        labelBackgroundColor: () => palette["relation-chip"],
+                        labelColor: (a) => (a.faded ? palette.muted : palette.accent),
+                        labelBackgroundColor: (a) => (a.faded ? palette["graph-faded"] : palette["relation-chip"]),
                         labelBackgroundPadding: 5,
                         labelSize: 12,
                         // relation names always show (sigma otherwise only labels lines whose two persons show
@@ -211,7 +226,8 @@ export function usePersonSigma(container: Ref<HTMLElement | undefined>, on: Pers
                     {
                         when: isLit,
                         then: {
-                            color: (a) => (a.explicit ? palette.accent : palette.muted),
+                            color: (a) =>
+                                a.faded ? palette["graph-faded"] : a.explicit ? palette.accent : palette.muted,
                             depth: "topEdges",
                         },
                     },

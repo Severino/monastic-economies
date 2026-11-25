@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { Eye, EyeOff, Link2Off, List, Network, Share2 } from "lucide-vue-next"
+import { CircleQuestionMark, Eye, EyeOff, List, Mars, Minus, Network, Share2, Venus } from "lucide-vue-next"
 import type { EgoNeighbor } from "~/composables/useEgoNetwork"
+import { CHARTERS, useGraphFilters } from "~/composables/useGraphFilters"
+import type { Component } from "vue"
+import type { SexCategory } from "~/utils/person"
 
 const props = defineProps<{ id: string }>()
 const { data: persons } = await usePersons()
@@ -89,14 +92,21 @@ onMounted(() => {
 })
 const hiddenCount = computed(() => hidden.value.filter((h) => h !== props.id).length)
 
-// only explicit relations (URL: ?unrelated=hide): persons that just share charters are left out
-const hideUnrelated = computed(() => route.query.unrelated === "hide")
-const toggleUnrelated = () =>
-    router.push({ query: { ...route.query, unrelated: hideUnrelated.value ? undefined : "hide" } })
+// legend (link types followed) and sex filter of the graphs: shared by all persons, kept in localStorage
+const filters = useGraphFilters()
+const sexFilter: { sex: SexCategory; icon: Component; title: string }[] = [
+    { sex: "male", icon: Mars, title: "Male" },
+    { sex: "female", icon: Venus, title: "Female" },
+    { sex: "unknown", icon: CircleQuestionMark, title: "Sex unknown" },
+    { sex: "none", icon: Minus, title: "Sex not recorded" },
+]
+/** a neighbour is in the Charter Graph through a link type the legend leaves on */
+const followed = (n: EgoNeighbor) =>
+    (filters.relationOn(CHARTERS) && n.charters.length > 0) ||
+    n.relations.some((r) => filters.relationOn(label(r.name)))
 const graphQuery = computed(() => ({
     view: view.value === "charters" ? undefined : view.value,
     depth: route.query.depth as string | undefined,
-    unrelated: hideUnrelated.value ? "hide" : undefined,
 }))
 const openPerson = (id: string) => router.push({ path: `/persons/${id}`, query: graphQuery.value })
 /** hidden persons, by name */
@@ -130,6 +140,7 @@ const treeGroups = computed(() => {
         const next: string[] = []
         for (const n of frontier)
             for (const l of t.links) {
+                if (!l.names.some(filters.relationOn)) continue
                 const other = l.a === n ? l.b : l.b === n ? l.a : undefined
                 if (!other || off.has(other) || dist.has(other)) continue
                 dist.set(other, d)
@@ -151,10 +162,10 @@ const treeGroups = computed(() => {
 /** a person's relations in the tree, read from that person: "parent of Odo", "has parent Hugo" */
 function relationsOf(id: string) {
     return (tree.value?.links ?? [])
-        .filter((l) => l.a === id || l.b === id)
+        .filter((l) => (l.a === id || l.b === id) && l.names.some(filters.relationOn))
         .map((l) => {
             const other = nameOf(l.a === id ? l.b : l.a)
-            const names = l.names.join(", ")
+            const names = l.names.filter(filters.relationOn).join(", ")
             return !l.directed || l.a === id ? `${names} of ${other}` : `has ${names} ${other}`
         })
 }
@@ -214,7 +225,6 @@ const sexIcon = (s?: string) => {
                         >
                             {{ sec.title }}
                             <span class="count">{{ sec.items.length }}</span>
-                            <span v-if="sec.key === 'unrelated' && hideUnrelated" class="note">hidden in graph</span>
                             <button
                                 v-if="sec.key === 'hidden'"
                                 type="button"
@@ -233,7 +243,7 @@ const sexIcon = (s?: string) => {
                                 :class="{
                                     hovered: n.id === hovered,
                                     active: n.id === selected,
-                                    off: sec.key === 'hidden' || (sec.key === 'unrelated' && hideUnrelated),
+                                    off: sec.key === 'hidden' || !followed(n),
                                 }"
                                 @mouseenter="hovered = n.id"
                                 @mouseleave="hovered = undefined"
@@ -356,17 +366,20 @@ const sexIcon = (s?: string) => {
                 >
                     <EyeOff :size="16" /> {{ hiddenCount }} person{{ hiddenCount === 1 ? "" : "s" }} hidden
                 </button>
-                <button
-                    v-if="view === 'graph'"
-                    type="button"
-                    class="toggle-btn"
-                    :class="{ off: !hideUnrelated }"
-                    :aria-pressed="hideUnrelated"
-                    title="Hide persons that only share charters and have no explicit relation"
-                    @click="toggleUnrelated"
-                >
-                    <Link2Off :size="16" /> Hide unrelated
-                </button>
+                <div class="sex-filter" role="group" aria-label="Persons by sex (others are faded)">
+                    <button
+                        v-for="f in sexFilter"
+                        :key="f.sex"
+                        type="button"
+                        class="toggle-btn"
+                        :class="{ off: !filters.sexOn(f.sex) }"
+                        :aria-pressed="filters.sexOn(f.sex)"
+                        :title="`${f.title}: ${filters.sexOn(f.sex) ? 'shown, click to fade' : 'faded, click to show'}`"
+                        @click="filters.toggleSex(f.sex)"
+                    >
+                        <component :is="f.icon" :size="16" />
+                    </button>
+                </div>
             </div>
             <p v-if="view === 'relations' && !treeSize" class="muted graph-empty">
                 {{ person.name }} has no explicit relations in the index.
@@ -379,7 +392,6 @@ const sexIcon = (s?: string) => {
                     :depth="depth"
                     :highlight="hovered"
                     :hidden="hidden"
-                    :hide-unrelated="hideUnrelated"
                     :selected="selected"
                     @hover="hovered = $event"
                     @select="selected = $event"
@@ -394,14 +406,16 @@ const sexIcon = (s?: string) => {
                 related persons together, beyond the person they hang on. Lines: links of {{ person.name }}, from step 2
                 on the link each person was reached through, and relations among the persons shown. Thickness: shared
                 charters. <span class="accent">Coloured lines</span>: explicit relations from the index, arrow =
-                direction. Drag a person to pin them (double-click releases), click to select, Ctrl/⌘-click to open,
-                Alt-click to hide (with everyone reached only through them).
+                direction. The legend (bottom right) picks the links followed, the sex buttons above fade persons; both
+                are kept for every person. Drag a person to pin them (double-click releases), click to select,
+                Ctrl/⌘-click to open, Alt-click to hide (with everyone reached only through them).
             </p>
             <p v-else class="graph-legend muted small">
                 Persons connected to {{ person.name }} through relations from the index, followed recursively; shared
                 charters are ignored. Arrows point from the active to the passive side of a relation (e.g. lord →
-                vassal). Drag a person to pin them (double-click releases), click to select, Ctrl/⌘-click to open,
-                Alt-click to hide.
+                vassal). The legend (bottom right) picks the relations followed, the sex buttons above fade persons;
+                both are kept for every person. Drag a person to pin them (double-click releases), click to select,
+                Ctrl/⌘-click to open, Alt-click to hide.
             </p>
         </section>
         <section v-else class="pane preview">

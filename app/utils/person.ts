@@ -5,3 +5,10 @@ export function sexOf(s?: string): "male" | "female" | undefined {
     if (v === "2" || v === "f" || v === "female") return "female"
     return undefined
 }
+
+/** Sex as a filter category: male, female, unknown (a value that says so, e.g. ISO 5218 0 or 9), none (not recorded). */
+export type SexCategory = "male" | "female" | "unknown" | "none"
+export function sexCategory(s?: string): SexCategory {
+    if (!s?.trim()) return "none"
+    return sexOf(s) ?? "unknown"
+}

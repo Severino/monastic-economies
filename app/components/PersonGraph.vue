@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Person, PersonNetwork } from "#shared/types"
 import type { Fan, LiveNode, Rope } from "~/composables/useLiveLayout"
+import { CHARTERS, useGraphFilters } from "~/composables/useGraphFilters"
+import { sexCategory } from "~/utils/person"
 
 // Network around one person, up to `depth` steps away; one component for both diagrams:
 // - "charters": a link is a shared charter or an explicit relation (the Charter Graph)
@@ -23,8 +25,6 @@ const props = defineProps<{
     selected?: string
     /** persons switched off: not shown and not followed to further steps */
     hidden: string[]
-    /** charters mode: only follow explicit relations (persons that just share charters are left out) */
-    hideUnrelated?: boolean
 }>()
 const emit = defineEmits<{
     /** click: select (undefined = clear) */
@@ -53,8 +53,18 @@ const view = usePersonSigma(container, {
 const layout = useLiveLayout<SimNode, SimLink>(
     () => `${props.mode === "relations" ? "relations" : "graph"}:${props.id}`,
 )
-/** follow explicit relations only */
-const relationsOnly = computed(() => props.mode === "relations" || !!props.hideUnrelated)
+// Legend (relation types, shared charters) and sex filter, shared by all persons (see useGraphFilters).
+// Persons are only reached through the link types switched on; persons of a sex switched off stay, faded.
+const filters = useGraphFilters()
+/** shared charters count as links (Charter Graph, unless switched off in the legend) */
+const chartersOn = computed(() => props.mode === "charters" && filters.relationOn(CHARTERS))
+/** all relation types in the index (legend entries) */
+const relationTypes = ref<string[]>([])
+const legend = computed(() => [
+    ...(props.mode === "charters" ? [{ name: CHARTERS, charters: true }] : []),
+    ...relationTypes.value.map((name) => ({ name, charters: false })),
+])
+const anyOff = computed(() => legend.value.some((e) => !filters.relationOn(e.name)))
 
 // ---- network (fetched once per visit) --------------------------------------------
 interface Link {
@@ -77,9 +87,24 @@ function loadNetwork() {
             link(a, b).relations.push({ name: label(name), dir: directed ? "out" : "mutual" })
             link(b, a).relations.push({ name: label(name), dir: directed ? "in" : "mutual" })
         }
+        relationTypes.value = [...new Set(net.relations.map(([, , name]) => label(name)))].sort()
         return adj
     })
     return network
+}
+
+/** The links the legend leaves on: relations of the selected types; shared charters only if switched on. */
+function usable(adj: Map<string, Map<string, Link>>) {
+    const out = new Map<string, Map<string, Link>>()
+    for (const [a, m] of adj) {
+        const kept = new Map<string, Link>()
+        for (const [b, l] of m) {
+            const relations = l.relations.filter((r) => filters.relationOn(r.name))
+            if (relations.length || (chartersOn.value && l.charters)) kept.set(b, { charters: l.charters, relations })
+        }
+        if (kept.size) out.set(a, kept)
+    }
+    return out
 }
 
 const nameOf = (id: string) => props.persons[id]?.name ?? id
@@ -95,7 +120,6 @@ function explore(adj: Map<string, Map<string, Link>>) {
         for (const from of frontier)
             for (const [to, l] of adj.get(from) ?? []) {
                 if (off.has(to) || (step.has(to) && step.get(to)! < d)) continue
-                if (relationsOnly.value && !l.relations.length) continue
                 const best = parent.get(to)
                 if (!step.has(to)) {
                     step.set(to, d)
@@ -166,8 +190,9 @@ let renderId = 0
 async function render() {
     if (!container.value) return
     const id = ++renderId
-    const [{ default: Graph }, adj, d3] = await Promise.all([import("graphology"), loadNetwork(), import("d3-force")])
+    const [{ default: Graph }, all, d3] = await Promise.all([import("graphology"), loadNetwork(), import("d3-force")])
     if (id !== renderId || !container.value) return // a newer render started meanwhile
+    const adj = usable(all)
     const { step, parent } = explore(adj)
 
     const counts = Array.from({ length: props.depth }, (_, i) => [...step.values()].filter((s) => s === i + 1).length)
@@ -179,7 +204,7 @@ async function render() {
     const pairs = new Map<string, [string, string]>()
     const related = (a: string, b: string) => !!adj.get(a)?.get(b)?.relations.length
     const addPair = (a: string, b: string) => {
-        if (!relationsOnly.value || related(a, b)) pairs.set(a < b ? `${a} ${b}` : `${b} ${a}`, [a, b])
+        if (chartersOn.value || related(a, b)) pairs.set(a < b ? `${a} ${b}` : `${b} ${a}`, [a, b])
     }
     for (const b of adj.get(props.id)?.keys() ?? []) if (step.has(b)) addPair(props.id, b)
     for (const [c, p] of parent) if (step.get(c)! > 1) addPair(p, c)
@@ -331,6 +356,7 @@ async function render() {
             y: simNodes.get(n)!.y,
             size: sizeOf(s),
             ...personNode(props.persons[n], n, s === 0),
+            faded: isFaded(n),
         })
     const maxCharters = Math.max(1, ...[...pairs.values()].map(([a, b]) => adj.get(a)!.get(b)!.charters))
     for (const [a, b] of pairs.values()) {
@@ -350,6 +376,7 @@ async function render() {
             ),
             explicit: l.relations.length > 0,
             relations: relationText(a, b),
+            faded: isFaded(a) || isFaded(b),
         })
     }
     // who hangs on whom (they move along when that person is dragged)
@@ -361,6 +388,7 @@ async function render() {
     for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })
 
     // frame: centre person in the middle, the whole graph (at least the pane, so units stay pixels)
+    shownGraph = graph
     const [rx, ry] = [extent("x"), extent("y")]
     await view.mount(graph, { x: [-rx, rx], y: [-ry, ry] })
     view.setListHighlight(props.highlight)
@@ -375,7 +403,23 @@ watch(
     () => props.selected,
     (s) => view.setSelected(s),
 )
-watch(() => [props.id, props.mode, props.depth, props.hidden.join(), props.hideUnrelated], render)
+watch(
+    () => [props.id, props.mode, props.depth, props.hidden.join(), chartersOn.value, filters.relationsOff.value.join()],
+    render,
+)
+
+// persons of a sex switched off: faded with their lines, without a new layout (the centre person never)
+const isFaded = (n: string) => n !== props.id && !filters.sexOn(sexCategory(props.persons[n]?.sex))
+let shownGraph: import("graphology").default | undefined
+watch(
+    () => filters.sexOff.value.join(),
+    () => {
+        const g = shownGraph
+        if (!g) return
+        g.updateEachNodeAttributes((n, a) => ({ ...a, faded: isFaded(n) }))
+        g.updateEachEdgeAttributes((_, a, s, t) => ({ ...a, faded: isFaded(s) || isFaded(t) }))
+    },
+)
 
 onMounted(render)
 onBeforeUnmount(() => renderId++)
@@ -385,5 +429,22 @@ onBeforeUnmount(() => renderId++)
     <div class="person-graph-wrap">
         <div ref="container" class="person-graph" />
         <PersonTips :tips="view.tips.value" />
+        <div v-if="legend.length" class="relation-legend" role="group" aria-label="Links followed">
+            <button
+                v-for="e in legend"
+                :key="e.name"
+                type="button"
+                class="legend-entry"
+                :class="{ off: !filters.relationOn(e.name), charters: e.charters }"
+                :aria-pressed="filters.relationOn(e.name)"
+                :title="filters.relationOn(e.name) ? 'Click to leave out' : 'Click to follow again'"
+                @click="filters.toggleRelation(e.name)"
+            >
+                <span class="swatch" />{{ e.name }}
+            </button>
+            <button type="button" class="link-btn small" :disabled="!anyOff" @click="filters.showAllRelations()">
+                Show all
+            </button>
+        </div>
     </div>
 </template>

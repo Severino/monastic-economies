@@ -143,17 +143,26 @@ UI language: **English**.
   arrow head (active → passive), at both ends when relations go both ways. Relation labels are forced visible
   (`labelVisibility: "visible"`): sigma 4 otherwise only labels edges whose two nodes show their labels, so zooming
   in (one end off screen) dropped them.
-- Circles by `@sex`: `--male` blue, `--female` pink, `--sex-unknown` grey; the centre person in `--accent`.
+- Circles by `@sex`: `--male` blue, `--female` pink, `--sex-unknown` grey. The centre person keeps its sex colour and
+  gets a strong ring in `--text` (dark on light, light on dark).
 - Both diagrams share `usePersonSigma`: drag a person (circle or name) to move and pin it, click selects it (click again or on
   the background to clear; not in the URL), **Ctrl/⌘-click opens** the person, **Alt-click hides** them in the graph
   (`?hide=a,b`; hidden persons are not followed to further steps). Hidden persons are remembered per person in
   `localStorage` (`monastic-economies:hidden:<id>`) and restored when the URL has no `?hide=`; the toolbar shows
-  "N persons hidden" next to "Hide unrelated" (click shows them all again). Hiding is shared by both graphs. Hovered,
+  "N persons hidden" (click shows them all again). Hiding is shared by both graphs. Hovered,
   selected and list-hovered persons are highlighted with their lines; their list row gets a subtle border (selected
   rows also a background and scroll into view).
 - Labels: the first name only, centred below the circle. On highlight, alternate spellings appear below the name in
   smaller type (`PersonTips`, an HTML box over the label; sigma's label attachments made other labels vanish).
-- "Hide unrelated" (`?unrelated=hide`, push) follows only explicit relations, so persons that only share charters drop out.
+- **Filters** (`useGraphFilters`), shared by all persons and both graphs, kept in `localStorage` (not in the URL), so a
+  choice such as "family only" stays when moving from person to person and after a reload:
+  - **Legend** (bottom right over the graph): every relation type in the index, plus "shared charters" in the Charter
+    Graph. Clicking an entry switches it off/on (`monastic-economies:graph-relations-off`), "Show all" resets. Persons
+    are only reached through the link types left on; the rest drop out (and are greyed in the lists). Switching off
+    "shared charters" is what "Hide unrelated" used to do.
+  - **Sex filter** (toolbar): Mars / Venus / ? / – toggles (`monastic-economies:graph-sex-off`). "?" = `@sex` given but
+    neither male nor female (e.g. ISO 5218 0 or 9), "–" = no `@sex`. Persons switched off stay in place, drawn in
+    `--graph-faded` with their lines (no new layout); the centre person is never faded.
 - The list next to the Charter Graph has three sections: **Related** (explicit relation), **Unrelated** (only shared charters),
   **Hidden** (all of `?hide=`, with "Show all"); each row has an eye toggle and a dot in the person's graph colour.
 - Names: there are no surnames. `<name>` elements (or the `persName` text) are split on commas; the first name is
