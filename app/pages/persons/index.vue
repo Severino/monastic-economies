@@ -1,19 +1,32 @@
 <script setup lang="ts">
 import { CircleDashed, Mars, Venus } from "lucide-vue-next"
+import { matchesAll, queryTerms } from "#shared/search"
 
 useHead({ title: "Persons · Monastic Economies" })
 const { data: persons } = await usePersons()
 const route = useRoute()
 const router = useRouter()
-const filter = computed({
-    get: () => (route.query.q as string) ?? "",
-    set: (v) => router.replace({ query: { q: v || undefined } }),
+// same search box and matching rule as the charter catalog: every word, anywhere in a name
+// (alternate spellings included), ignoring case and diacritics; typing only replaces the history entry
+const q = () => (typeof route.query.q === "string" ? route.query.q : "")
+const text = ref(q())
+let t: ReturnType<typeof setTimeout> | undefined
+watch(text, (v) => {
+    clearTimeout(t)
+    t = setTimeout(() => router.replace({ query: { ...route.query, q: v.trim() || undefined } }), 250)
 })
-const list = computed(() =>
-    Object.values(persons.value ?? {})
-        .filter((p) => p.name.toLowerCase().includes(filter.value.toLowerCase()))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+watch(
+    () => route.query.q,
+    () => {
+        if (q() !== text.value.trim()) text.value = q()
+    },
 )
+const list = computed(() => {
+    const terms = queryTerms(q())
+    return Object.values(persons.value ?? {})
+        .filter((p) => matchesAll([p.name, ...p.altNames].join(" "), terms))
+        .sort((a, b) => a.name.localeCompare(b.name))
+})
 // group by first letter (diacritics folded, so "Ádalbert" goes under A)
 const groups = computed(() => {
     const out = new Map<string, typeof list.value>()
@@ -24,20 +37,21 @@ const groups = computed(() => {
     }
     return [...out]
 })
-// TEI @sex: ISO 5218 numbers (1 male, 2 female) or letters/words
-function sexOf(s?: string) {
-    const v = s?.trim().toLowerCase()
-    if (v === "1" || v === "m" || v === "male") return { icon: Mars, label: "male" }
-    if (v === "2" || v === "f" || v === "female") return { icon: Venus, label: "female" }
-    return { icon: CircleDashed, label: "sex unknown" }
+function sexIcon(s?: string) {
+    const sex = sexOf(s)
+    return sex === "male"
+        ? { icon: Mars, label: "male" }
+        : sex === "female"
+          ? { icon: Venus, label: "female" }
+          : { icon: CircleDashed, label: "sex unknown" }
 }
 </script>
 
 <template>
     <div class="container">
         <h1>Persons</h1>
-        <input v-model="filter" type="search" placeholder="Filter by name…" aria-label="Filter persons" class="wide" />
-        <p class="muted">{{ list.length }} persons</p>
+        <SearchField v-model="text" placeholder="Search persons…" label="Search persons" />
+        <p class="muted">{{ list.length }} person{{ list.length === 1 ? "" : "s" }}</p>
         <nav v-if="groups.length > 1" class="letter-nav" aria-label="Jump to letter">
             <a v-for="[letter] in groups" :key="letter" :href="`#letter-${letter}`">{{ letter }}</a>
         </nav>
@@ -46,14 +60,18 @@ function sexOf(s?: string) {
             <ul class="person-list">
                 <li v-for="p in items" :key="p.id">
                     <component
-                        :is="sexOf(p.sex).icon"
+                        :is="sexIcon(p.sex).icon"
                         :size="15"
                         class="sex-icon"
-                        :class="{ unknown: sexOf(p.sex).label === 'sex unknown' }"
-                        :aria-label="sexOf(p.sex).label"
+                        :class="{ unknown: sexIcon(p.sex).label === 'sex unknown' }"
+                        :aria-label="sexIcon(p.sex).label"
                         role="img"
                     />
-                    <NuxtLink :to="`/persons/${p.id}`">{{ p.name }}</NuxtLink>
+                    <NuxtLink
+                        :to="`/persons/${p.id}`"
+                        :title="p.altNames.length ? `also: ${p.altNames.join(', ')}` : undefined"
+                        >{{ p.name }}</NuxtLink
+                    >
                     <span class="muted small">
                         {{ p.charters.length }} charter{{ p.charters.length === 1 ? "" : "s" }}</span
                     >

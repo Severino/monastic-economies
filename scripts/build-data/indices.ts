@@ -44,7 +44,17 @@ export function readIndices(root: El, into: Indices, issue: (m: string) => void)
         const id = xmlId(p)
         if (!id) continue
         const persName = child(p, "persName")
-        const names = persName ? children(persName, "name").map(text) : [text(child(p, "name"))]
+        // <name> elements, each possibly "Odo, Oddo, Otto": the first name is the name, every other one
+        // (later elements and comma-separated parts) an alternate spelling; there are no surnames
+        const nameEls = persName ? children(persName, "name") : []
+        const names = (
+            nameEls.length
+                ? nameEls.map(text)
+                : [persName ? text(persName).replace(text(child(persName, "roleName")), "") : text(child(p, "name"))]
+        )
+            .flatMap((n) => n.split(","))
+            .map((n) => n.trim())
+            .filter((n, i, all) => n && all.indexOf(n) === i)
         if (into.persons.has(id)) issue(`duplicate person id "${id}"`)
         into.persons.set(id, {
             id,

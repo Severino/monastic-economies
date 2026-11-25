@@ -1,25 +1,37 @@
 <script setup lang="ts">
-import type Sigma from "sigma"
-import type { PersonNetwork } from "#shared/types"
+import type { Person, PersonNetwork } from "#shared/types"
+import type { Fan, LiveNode, Rope } from "~/composables/useLiveLayout"
+import { CHARTERS, useGraphFilters } from "~/composables/useGraphFilters"
+import { sexCategory } from "~/utils/person"
 
-// Network around one person, up to `depth` steps away. Rings = steps; within a ring
-// every person sits in the sector of the person it was reached from (radial tree).
-// Line thickness = number of shared charters; accent lines = explicit relations.
-// Rendered client-only (WebGL); sigma is imported lazily so it stays out of SSR.
+// Network around one person, up to `depth` steps away; one component for both diagrams:
+// - "charters": a link is a shared charter or an explicit relation (the Charter Graph)
+// - "relations": explicit relations only (the Relations Graph)
+// Positions come from a live force simulation (d3-force): the person is fixed in the middle and everyone
+// else is pushed outwards; only the lines hold them. Lines to the person (and from step 2 on to the person
+// each one was reached from) are stiffer the more charters they share, so close persons stay near and
+// weak ties drift out; relation lines are stiff and as long as their label, so a person with a single
+// relation hangs beyond its partner instead of sitting near the centre. Line thickness = shared charters;
+// accent lines = explicit relations. Rendered client-only (WebGL); sigma, graphology and d3-force are
+// imported lazily so they stay out of SSR. Interaction: see usePersonSigma and useLiveLayout.
 const props = defineProps<{
     id: string
-    /** person id -> display name */
-    names: Record<string, string>
+    mode: "charters" | "relations"
+    persons: Record<string, Person>
     depth: number
     /** person highlighted from outside (hover in the list) */
     highlight?: string
+    /** person selected (click in the diagram) */
+    selected?: string
     /** persons switched off: not shown and not followed to further steps */
     hidden: string[]
 }>()
 const emit = defineEmits<{
+    /** click: select (undefined = clear) */
+    select: [id: string | undefined]
     /** ctrl/cmd-click: open that person */
-    select: [id: string]
-    /** click: switch a person off */
+    open: [id: string]
+    /** alt-click: switch a person off */
     hide: [id: string]
     hover: [id: string | undefined]
     /** number of persons per step: [1 step, 2 steps, …] */
@@ -27,17 +39,32 @@ const emit = defineEmits<{
 }>()
 
 const container = ref<HTMLElement>()
-let sigma: Sigma | undefined
-let observer: MutationObserver | undefined
-let media: MediaQueryList | undefined
-let hoveredEdge: string | undefined
-
-// colours come from the CSS tokens, re-read when the theme changes
-const palette = { text: "", muted: "", border: "", accent: "", person: "", surface: "" }
-function readPalette() {
-    const s = getComputedStyle(document.documentElement)
-    for (const k of Object.keys(palette) as (keyof typeof palette)[]) palette[k] = s.getPropertyValue(`--${k}`).trim()
-}
+const view = usePersonSigma(container, {
+    select: (id) => emit("select", id),
+    open: (id) => emit("open", id),
+    hide: (id) => {
+        if (id !== props.id) emit("hide", id)
+    },
+    hover: (id) => emit("hover", id),
+    drag: (id, phase) => layout.drag(id, phase),
+    unpin: (id) => layout.unpin(id),
+})
+// live layout; dragged persons stay pinned (per centre person, remembered in localStorage)
+const layout = useLiveLayout<SimNode, SimLink>(
+    () => `${props.mode === "relations" ? "relations" : "graph"}:${props.id}`,
+)
+// Legend (relation types, shared charters) and sex filter, shared by all persons (see useGraphFilters).
+// Persons are only reached through the link types switched on; persons of a sex switched off stay, faded.
+const filters = useGraphFilters()
+/** shared charters count as links (Charter Graph, unless switched off in the legend) */
+const chartersOn = computed(() => props.mode === "charters" && filters.relationOn(CHARTERS))
+/** all relation types in the index (legend entries) */
+const relationTypes = ref<string[]>([])
+const legend = computed(() => [
+    ...(props.mode === "charters" ? [{ name: CHARTERS, charters: true }] : []),
+    ...relationTypes.value.map((name) => ({ name, charters: false })),
+])
+const anyOff = computed(() => legend.value.some((e) => !filters.relationOn(e.name)))
 
 // ---- network (fetched once per visit) --------------------------------------------
 interface Link {
@@ -60,10 +87,27 @@ function loadNetwork() {
             link(a, b).relations.push({ name: label(name), dir: directed ? "out" : "mutual" })
             link(b, a).relations.push({ name: label(name), dir: directed ? "in" : "mutual" })
         }
+        relationTypes.value = [...new Set(net.relations.map(([, , name]) => label(name)))].sort()
         return adj
     })
     return network
 }
+
+/** The links the legend leaves on: relations of the selected types; shared charters only if switched on. */
+function usable(adj: Map<string, Map<string, Link>>) {
+    const out = new Map<string, Map<string, Link>>()
+    for (const [a, m] of adj) {
+        const kept = new Map<string, Link>()
+        for (const [b, l] of m) {
+            const relations = l.relations.filter((r) => filters.relationOn(r.name))
+            if (relations.length || (chartersOn.value && l.charters)) kept.set(b, { charters: l.charters, relations })
+        }
+        if (kept.size) out.set(a, kept)
+    }
+    return out
+}
+
+const nameOf = (id: string) => props.persons[id]?.name ?? id
 
 /** Breadth-first search from the centre; parent = strongest link from the previous step. */
 function explore(adj: Map<string, Map<string, Link>>) {
@@ -88,8 +132,11 @@ function explore(adj: Map<string, Map<string, Link>>) {
     return { step, parent }
 }
 
-/** Radial tree: ring = step, each subtree gets a sector proportional to its number of leaves. */
-function layout(step: Map<string, number>, parent: Map<string, string>) {
+/**
+ * Start positions: radial tree (ring = step, each subtree gets a sector proportional to the square
+ * root of its number of leaves). New persons start here; persons already shown keep their place.
+ */
+function radialTree(step: Map<string, number>, parent: Map<string, string>, ring: number) {
     const children = new Map<string, string[]>()
     for (const [c, p] of parent) {
         if (!children.has(p)) children.set(p, [])
@@ -103,25 +150,17 @@ function layout(step: Map<string, number>, parent: Map<string, string>) {
     }
     count(props.id)
     const pos = new Map<string, { x: number; y: number }>([[props.id, { x: 0, y: 0 }]])
-    const ringSize = new Map<number, number>()
-    for (const st of step.values()) ringSize.set(st, (ringSize.get(st) ?? 0) + 1)
-    const placed = new Map<number, number>() // per ring, in angular order
-    // sector width ~ sqrt(leaves): big subtrees get more room without squeezing the inner ring
     const weight = (n: string) => Math.sqrt(leaves.get(n)!)
     const place = (n: string, from: number, to: number) => {
         let a = from
         const kids = (children.get(n) ?? []).sort(
-            (x, y) => leaves.get(y)! - leaves.get(x)! || (props.names[x] ?? x).localeCompare(props.names[y] ?? y),
+            (x, y) => leaves.get(y)! - leaves.get(x)! || nameOf(x).localeCompare(nameOf(y)),
         )
         const total = kids.reduce((t, c) => t + weight(c), 0)
         for (const c of kids) {
             const span = ((to - from) * weight(c)) / total
             const angle = a + span / 2 - Math.PI / 2
-            // crowded ring: alternate two radii so neighbouring labels don't collide
-            const ring = ringSize.get(step.get(c)!)!
-            const i = placed.get(step.get(c)!) ?? 0
-            placed.set(step.get(c)!, i + 1)
-            const r = step.get(c)! + (ring > 20 && i % 2 ? 0.18 : 0)
+            const r = step.get(c)! * ring
             pos.set(c, { x: r * Math.cos(angle), y: r * Math.sin(angle) })
             place(c, a, a + span)
             a += span
@@ -131,207 +170,282 @@ function layout(step: Map<string, number>, parent: Map<string, string>) {
     return pos
 }
 
-const plural = (n: number) => `${n} shared charter${n === 1 ? "" : "s"}`
+type SimNode = LiveNode
+interface SimLink {
+    source: string | SimNode
+    target: string | SimNode
+    distance: number
+    strength: number
+}
 
+// ---- live force simulation (d3-force), graph units = pixels while the graph fits the pane ----------
+// It keeps running while a person is dragged, so the others make room; when persons are hidden or the
+// depth changes, everyone already shown starts where they were and the rest settles around them.
+let simNodes = new Map<string, SimNode>()
+/** last positions, kept across re-renders of the same centre person */
+let lastPos = new Map<string, { x: number; y: number }>()
+let lastCentre = ""
+
+let renderId = 0
 async function render() {
     if (!container.value) return
-    const [
-        { default: Graph },
-        { default: SigmaCtor },
-        adj,
-        { EdgeDoubleArrowProgram },
-        { DEFAULT_EDGE_PROGRAM_CLASSES },
-    ] = await Promise.all([
-        import("graphology"),
-        import("sigma"),
-        loadNetwork(),
-        import("sigma/rendering"),
-        import("sigma/settings"),
-    ])
-    sigma?.kill()
-    readPalette()
-
+    const id = ++renderId
+    const [{ default: Graph }, all, d3] = await Promise.all([import("graphology"), loadNetwork(), import("d3-force")])
+    if (id !== renderId || !container.value) return // a newer render started meanwhile
+    const adj = usable(all)
     const { step, parent } = explore(adj)
-    const pos = layout(step, parent)
+
     const counts = Array.from({ length: props.depth }, (_, i) => [...step.values()].filter((s) => s === i + 1).length)
     emit("stats", counts)
+
+    // Lines drawn: every link of the centre person, from step 2 on the link to the person each one was
+    // reached from, and explicit relations between any two persons shown (so related persons form islands).
+    // Drawing every co-occurrence would be a hairball: every charter is a clique. Relations mode: relations only.
+    const pairs = new Map<string, [string, string]>()
+    const related = (a: string, b: string) => !!adj.get(a)?.get(b)?.relations.length
+    const addPair = (a: string, b: string) => {
+        if (chartersOn.value || related(a, b)) pairs.set(a < b ? `${a} ${b}` : `${b} ${a}`, [a, b])
+    }
+    for (const b of adj.get(props.id)?.keys() ?? []) if (step.has(b)) addPair(props.id, b)
+    for (const [c, p] of parent) if (step.get(c)! > 1) addPair(p, c)
+    for (const a of step.keys())
+        for (const [b, l] of adj.get(a) ?? []) if (step.has(b) && l.relations.length && a < b) addPair(a, b)
+    const relationText = (a: string, b: string) =>
+        [...new Set((adj.get(a)?.get(b)?.relations ?? []).map((r) => r.name))].join(", ")
+
+    // a line is at least as long as its relation label needs
+    const sizeOf = (s: number) => (s === 0 ? 14 : Math.max(4, 10 - 2 * s))
+    const minLength = (a: string, b: string) => {
+        const t = relationText(a, b)
+        return sizeOf(step.get(a)!) + sizeOf(step.get(b)!) + (t ? textWidth(t, "relation") + 30 : 40)
+    }
+    const ring = 110
+
+    // tie strength of a line by shared charters, 0 (one charter) … 1 (the most in this graph)
+    const charters = (a: string, b: string) => adj.get(a)?.get(b)?.charters ?? 0
+    const maxShared = Math.max(1, ...[...pairs.values()].map(([a, b]) => charters(a, b)))
+    const tie = (a: string, b: string) =>
+        maxShared > 1 ? Math.sqrt(Math.max(0, charters(a, b) - 1) / (maxShared - 1)) : 0
+
+    if (lastCentre !== props.id) lastPos = new Map()
+    lastCentre = props.id
+    const start = radialTree(step, parent, ring)
+    layout.stop()
+    simNodes = new Map(
+        [...step].map(([n, s]) => [
+            n,
+            {
+                id: n,
+                ...(lastPos.get(n) ?? start.get(n)!),
+                radius: Math.max(sizeOf(s) + 8, textWidth(nameOf(n), "name") / 2 + 8),
+            },
+        ]),
+    )
+    simNodes.get(props.id)!.anchor = { x: 0, y: 0 }
+    layout.applyPins(simNodes)
+    // The centre person repels everyone (forceOutward) and everyone repels everyone (many-body, any distance);
+    // only lines attract. Relation lines are springs, long enough for their label plus room. Charter lines are
+    // ropes: they only pull when stretched beyond their length, which is shorter the more charters they stand for
+    // (close persons stay near, weak ties drift out), and they never pull a person inwards that is held by a relation.
+    const PUSH = 12
+    const springs: SimLink[] = [...pairs.values()]
+        .filter(([a, b]) => related(a, b))
+        .map(([a, b]) => ({ source: a, target: b, distance: minLength(a, b) + 40, strength: 0.8 }))
+
+    // Islands: persons joined by relations, not counting the centre person. An island hangs from one rope only
+    // (from its anchor: a member related to the centre needs none; else the member nearest the centre with the
+    // most relations), so its other members are free to move to the far side, away from everyone else.
+    const islandOf = new Map<string, string[]>()
+    for (const n of step.keys()) {
+        if (n === props.id || islandOf.has(n)) continue
+        const members: string[] = []
+        const visit = (m: string) => {
+            if (islandOf.has(m)) return
+            islandOf.set(m, members)
+            members.push(m)
+            for (const [o, l] of adj.get(m) ?? [])
+                if (o !== props.id && step.has(o) && l.relations.length && pairs.has(o < m ? `${o} ${m}` : `${m} ${o}`))
+                    visit(o)
+        }
+        visit(n)
+    }
+    const degree = (n: string) => springs.filter((l) => l.source === n || l.target === n).length
+    const anchorOf = new Map<string[], string | undefined>()
+    for (const members of new Set(islandOf.values())) {
+        if (members.length === 1) anchorOf.set(members, members[0])
+        else if (members.some((m) => related(props.id, m))) anchorOf.set(members, undefined)
+        else
+            anchorOf.set(
+                members,
+                [...members].sort(
+                    (a, b) =>
+                        step.get(a)! - step.get(b)! ||
+                        degree(b) - degree(a) ||
+                        charters(parent.get(b)!, b) - charters(parent.get(a)!, a),
+                )[0],
+            )
+    }
+    // a charter line holds the person further out (the other end is the centre or the one it was reached from)
+    const ropes: Rope<SimNode>[] = []
+    for (const [a, b] of pairs.values()) {
+        if (related(a, b)) continue
+        const held = a === props.id || parent.get(b) === a ? b : a
+        if (anchorOf.get(islandOf.get(held)!) !== held) continue
+        ropes.push({
+            a: simNodes.get(a === held ? b : a)!,
+            b: simNodes.get(held)!,
+            length: ring * (0.8 + 0.8 * (1 - tie(a, b))),
+        })
+    }
+    // Who hangs on whom: breadth-first from the centre person along springs (both ways) and ropes (towards the
+    // person held). A person hanging on someone other than the centre is drawn to the point straight beyond that
+    // person, seen from the centre (forceFan); its siblings push each other apart, so they fan out on the far side.
+    // (The outward push alone is the same for a person and its relatives, so it never turns a group around:
+    // a person that flew out past its relatives left them hanging on the inner side.)
+    const along = new Map<string, { to: string; distance: number }[]>()
+    const addAlong = (a: string, b: string, distance: number) =>
+        along.set(a, [...(along.get(a) ?? []), { to: b, distance }])
+    for (const l of springs) {
+        addAlong(l.source as string, l.target as string, l.distance)
+        addAlong(l.target as string, l.source as string, l.distance)
+    }
+    for (const r of ropes) addAlong(r.a.id, r.b.id, r.length * 0.8)
+    const fans: Fan<SimNode>[] = []
+    const reached = new Set([props.id])
+    let queue = [props.id]
+    while (queue.length) {
+        const next: string[] = []
+        for (const n of queue)
+            for (const { to, distance } of along.get(n) ?? []) {
+                if (reached.has(to)) continue
+                reached.add(to)
+                next.push(to)
+                if (n !== props.id) fans.push({ node: simNodes.get(to)!, hub: simNodes.get(n)!, distance })
+            }
+        queue = next.sort()
+    }
+
+    const sim = d3
+        .forceSimulation([...simNodes.values()])
+        .force("out", forceOutward<SimNode>(PUSH))
+        .force("fan", forceFan<SimNode>(fans, 0.15))
+        .force("collide", d3.forceCollide<SimNode>((n) => n.radius).iterations(3))
+        .force("charge", d3.forceManyBody<SimNode>().strength(-80))
+        .force(
+            "link",
+            d3
+                .forceLink<SimNode, SimLink>(springs)
+                .id((n) => n.id)
+                .distance((l) => l.distance)
+                .strength((l) => l.strength)
+                .iterations(3),
+        )
+        .force("ropes", forceRope<SimNode>(ropes))
+        .stop()
+    // settle before showing (persons already shown barely move), then keep the simulation for dragging
+    const changed = [...step.keys()].some((n) => !lastPos.has(n))
+    sim.alpha(changed ? 1 : 0.3)
+    sim.alphaDecay(1 - Math.pow(0.001, 1 / 500))
+    sim.tick(500)
+    const extent = (axis: "x" | "y") => Math.max(...[...simNodes.values()].map((p) => Math.abs(p[axis]))) + 40
 
     const graph = new Graph()
     for (const [n, s] of step)
         graph.addNode(n, {
-            ...pos.get(n)!,
-            size: s === 0 ? 14 : Math.max(4, 10 - 2 * s),
-            label: props.names[n] ?? n,
-            step: s,
+            x: simNodes.get(n)!.x,
+            y: simNodes.get(n)!.y,
+            size: sizeOf(s),
+            ...personNode(props.persons[n], n, s === 0),
+            faded: isFaded(n),
         })
-    // Links drawn: every link of the centre person, and from step 2 on the link to the person each one was
-    // reached from. Co-occurrence makes every charter a clique, so drawing all links between shown persons
-    // turns into a hairball as soon as there is more than one step.
-    const links: [string, string][] = [
-        ...[...(adj.get(props.id)?.keys() ?? [])]
-            .filter((b) => step.has(b))
-            .map((b): [string, string] => [props.id, b]),
-        ...[...parent].filter(([c]) => step.get(c)! > 1).map(([c, p]): [string, string] => [p, c]),
-    ]
-    const max = Math.max(1, ...links.map(([a, b]) => adj.get(a)!.get(b)!.charters))
-    for (const [a, b] of links) {
+    const maxCharters = Math.max(1, ...[...pairs.values()].map(([a, b]) => adj.get(a)!.get(b)!.charters))
+    for (const [a, b] of pairs.values()) {
         const l = adj.get(a)!.get(b)!
         // directed relations as arrow heads (active -> passive), both ends when they go both ways
         const out = l.relations.some((r) => r.dir === "out")
         const inn = l.relations.some((r) => r.dir === "in")
         const [source, target] = inn && !out ? [b, a] : [a, b]
         graph.addEdge(source, target, {
-            type: out && inn ? "doubleArrow" : out || inn ? "arrow" : "line",
+            head: out || inn ? "arrow" : "none",
+            tail: out && inn ? "arrow" : "none",
             // thickness by shared charters (square root, so a few strong ties don't dwarf the rest)
             // (explicit relations at least 2 px, so their arrow heads stay visible)
             size: Math.max(
                 l.relations.length ? 2 : 1,
-                l.charters ? 1 + 5 * Math.sqrt((l.charters - 1) / Math.max(1, max - 1)) : 1,
+                l.charters ? 1 + 5 * Math.sqrt((l.charters - 1) / Math.max(1, maxCharters - 1)) : 1,
             ),
             explicit: l.relations.length > 0,
-            relations: [...new Set(l.relations.map((r) => r.name))].join(", "),
-            charters: l.charters,
+            relations: relationText(a, b),
+            faded: isFaded(a) || isFaded(b),
         })
     }
-
-    sigma = new SigmaCtor(graph, container.value, {
-        renderEdgeLabels: true,
-        enableEdgeEvents: true,
-        labelRenderedSizeThreshold: 0,
-        labelFont: "system-ui, -apple-system, Segoe UI, sans-serif",
-        labelSize: 13,
-        edgeLabelSize: 12,
-        stagePadding: 80,
-        labelDensity: 1,
-        labelGridCellSize: 40,
-        minCameraRatio: 0.05,
-        maxCameraRatio: 3,
-        ...themeSettings(),
-        defaultDrawNodeHover: drawHover,
-        defaultDrawNodeLabel: drawLabel,
-        edgeProgramClasses: { ...DEFAULT_EDGE_PROGRAM_CLASSES, doubleArrow: EdgeDoubleArrowProgram },
-        nodeReducer: (node, a) => ({
-            ...a,
-            color: a.step === 0 ? palette.accent : palette.person,
-            size: node === props.highlight ? a.size * 1.5 : a.size,
-            highlighted: node === props.highlight,
-            zIndex: node === props.highlight ? 1 : 0,
-        }),
-        edgeReducer: (edge, a) => {
-            const hovered = edge === hoveredEdge
-            const ends = graph.extremities(edge)
-            const lit = hovered || (!!props.highlight && ends.includes(props.highlight))
-            const text = [a.relations, a.charters ? plural(a.charters) : ""].filter(Boolean).join(" · ")
-            return {
-                ...a,
-                color: lit ? palette.muted : a.explicit ? palette.accent : palette.border,
-                // relation names always, the charter count on hover
-                label: hovered ? text : a.relations || undefined,
-                forceLabel: hovered,
-                zIndex: lit ? 1 : 0,
-            }
-        },
-        zIndex: true,
+    // who hangs on whom (they move along when that person is dragged)
+    const hangers = new Map<string, string[]>()
+    for (const f of fans) hangers.set(f.hub.id, [...(hangers.get(f.hub.id) ?? []), f.node.id])
+    layout.attach(sim, simNodes, graph, hangers, () => {
+        for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })
     })
+    for (const [n, p] of simNodes) lastPos.set(n, { x: p.x, y: p.y })
 
-    sigma.on("clickNode", ({ node, event }) => {
-        if (node === props.id) return
-        const e = event.original as MouseEvent
-        if (e.ctrlKey || e.metaKey) emit("select", node)
-        else emit("hide", node)
-    })
-    sigma.on("enterNode", ({ node }) => {
-        emit("hover", node === props.id ? undefined : node)
-        container.value!.style.cursor = node === props.id ? "" : "pointer"
-    })
-    sigma.on("leaveNode", () => {
-        emit("hover", undefined)
-        container.value!.style.cursor = ""
-    })
-    sigma.on("enterEdge", ({ edge }) => {
-        hoveredEdge = edge
-        sigma?.refresh({ skipIndexation: true })
-    })
-    sigma.on("leaveEdge", () => {
-        hoveredEdge = undefined
-        sigma?.refresh({ skipIndexation: true })
-    })
-}
-
-const themeSettings = () => ({
-    labelColor: { color: palette.text },
-    edgeLabelColor: { color: palette.accent },
-})
-
-type LabelData = { x: number; y: number; size: number; label?: string | null }
-type LabelSettings = { labelSize: number; labelFont: string; labelWeight: string }
-
-/** First name bold, the rest of the name below it in normal weight. */
-function drawLabel(ctx: CanvasRenderingContext2D, data: LabelData, settings: LabelSettings) {
-    if (!data.label) return
-    const { first, rest } = splitName(data.label)
-    const size = settings.labelSize
-    const x = data.x + data.size + 3
-    ctx.fillStyle = palette.text
-    ctx.font = `600 ${size}px ${settings.labelFont}`
-    ctx.fillText(first, x, rest ? data.y - 1 : data.y + size / 3)
-    if (rest) {
-        ctx.font = `400 ${size}px ${settings.labelFont}`
-        ctx.fillText(rest, x, data.y + size)
-    }
-}
-
-/** Hover / highlight: label on a surface-coloured box (sigma's default box is always white). */
-function drawHover(ctx: CanvasRenderingContext2D, data: LabelData, settings: LabelSettings) {
-    const size = settings.labelSize
-    const { first, rest } = splitName(data.label ?? "")
-    ctx.font = `600 ${size}px ${settings.labelFont}`
-    let width = ctx.measureText(first).width
-    ctx.font = `400 ${size}px ${settings.labelFont}`
-    width = Math.max(width, ctx.measureText(rest).width) + 8
-    const height = rest ? 2 * size + 10 : size + 10
-    const top = rest ? data.y - size - 4 : data.y - size / 2 - 5
-    ctx.fillStyle = palette.surface
-    ctx.strokeStyle = palette.muted
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.roundRect(
-        data.x - data.size - 3,
-        Math.min(top, data.y - data.size - 3),
-        data.size * 2 + 6 + width,
-        Math.max(height, data.size * 2 + 6),
-        4,
-    )
-    ctx.fill()
-    ctx.stroke()
-    drawLabel(ctx, data, settings)
-}
-
-function onThemeChange() {
-    readPalette()
-    sigma?.setSettings(themeSettings())
+    // frame: centre person in the middle, the whole graph (at least the pane, so units stay pixels)
+    shownGraph = graph
+    const [rx, ry] = [extent("x"), extent("y")]
+    await view.mount(graph, { x: [-rx, rx], y: [-ry, ry] })
+    view.setListHighlight(props.highlight)
+    view.setSelected(props.selected)
 }
 
 watch(
     () => props.highlight,
-    () => sigma?.refresh({ skipIndexation: true }),
+    (h) => view.setListHighlight(h),
 )
-watch(() => [props.id, props.depth, props.hidden.join()], render)
+watch(
+    () => props.selected,
+    (s) => view.setSelected(s),
+)
+watch(
+    () => [props.id, props.mode, props.depth, props.hidden.join(), chartersOn.value, filters.relationsOff.value.join()],
+    render,
+)
 
-onMounted(() => {
-    render()
-    observer = new MutationObserver(onThemeChange)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] })
-    media = window.matchMedia("(prefers-color-scheme: dark)")
-    media.addEventListener("change", onThemeChange)
-})
-onBeforeUnmount(() => {
-    observer?.disconnect()
-    media?.removeEventListener("change", onThemeChange)
-    sigma?.kill()
-})
+// persons of another sex than the one chosen: faded with their lines, without a new layout (the centre person
+// too; it keeps its ring)
+const isFaded = (n: string) => !filters.sexOn(sexCategory(props.persons[n]?.sex))
+let shownGraph: import("graphology").default | undefined
+watch(
+    () => filters.sexShown.value,
+    () => {
+        const g = shownGraph
+        if (!g) return
+        g.updateEachNodeAttributes((n, a) => ({ ...a, faded: isFaded(n) }))
+        g.updateEachEdgeAttributes((_, a, s, t) => ({ ...a, faded: isFaded(s) || isFaded(t) }))
+    },
+)
+
+onMounted(render)
+onBeforeUnmount(() => renderId++)
 </script>
 
 <template>
-    <div ref="container" class="person-graph" />
+    <div class="person-graph-wrap">
+        <div ref="container" class="person-graph" />
+        <PersonTips :tips="view.tips.value" />
+        <div v-if="legend.length" class="relation-legend" role="group" aria-label="Links followed">
+            <button
+                v-for="e in legend"
+                :key="e.name"
+                type="button"
+                class="legend-entry"
+                :class="{ off: !filters.relationOn(e.name), charters: e.charters }"
+                :aria-pressed="filters.relationOn(e.name)"
+                :title="filters.relationOn(e.name) ? 'Click to leave out' : 'Click to follow again'"
+                @click="filters.toggleRelation(e.name)"
+            >
+                <span class="swatch" />{{ e.name }}
+            </button>
+            <button type="button" class="link-btn small" :disabled="!anyOff" @click="filters.showAllRelations()">
+                Show all
+            </button>
+        </div>
+    </div>
 </template>

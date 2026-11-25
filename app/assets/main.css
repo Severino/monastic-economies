@@ -22,6 +22,14 @@
     --map-3: #ad93d6;
     --map-5: #e39cbf;
     --map-ink: #1f1d1a;
+    /* person graph: circles by sex (TEI @sex) */
+    --male: #2f6fc0;
+    --female: #d4508f;
+    --sex-unknown: #9b968d;
+    /* persons and lines filtered out (e.g. by sex): drawn faintly */
+    --graph-faded: #e3dfd8;
+    /* relation names on the diagram lines */
+    --relation-chip: #f4e8df;
     --font-text: "Source Serif 4 Variable", serif;
     --font-weight-regular: 200;
     --font-weight-bold: 500;
@@ -50,6 +58,11 @@
         --map-3: #b59ae6;
         --map-5: #eea6c8;
         --map-ink: #171614;
+        --male: #7fb2f0;
+        --female: #f08fbf;
+        --sex-unknown: #8a857c;
+        --graph-faded: #4a4742;
+        --relation-chip: #3b2c22;
     }
 } */
 :root[data-theme="dark"] {
@@ -71,6 +84,11 @@
     --map-3: #b59ae6;
     --map-5: #eea6c8;
     --map-ink: #171614;
+    --male: #7fb2f0;
+    --female: #f08fbf;
+    --sex-unknown: #8a857c;
+    --graph-faded: #4a4742;
+    --relation-chip: #3b2c22;
 }
 
 :root {
@@ -1101,12 +1119,6 @@ select {
     background: var(--surface);
     color: var(--text);
 }
-
-.wide {
-    width: 100%;
-    max-width: 30rem;
-}
-
 .charter-list {
     list-style: none;
     padding: 0;
@@ -1227,6 +1239,7 @@ select {
 }
 
 .sex {
+    margin-right: 0.3em;
     color: var(--muted);
 }
 
@@ -1306,11 +1319,16 @@ select {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    border: 1px solid transparent;
     border-radius: 4px;
 }
-
+/* hovered or selected in the list or the diagram: subtle border around the whole row */
 .neighbor-row:hover,
-.neighbor-row.selected {
+.neighbor-row.hovered,
+.neighbor-row.active {
+    border-color: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+.neighbor-row.active {
     background: var(--action-bg);
 }
 
@@ -1338,17 +1356,51 @@ select {
 }
 
 .neighbor .name {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.25;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
     color: var(--person);
 }
-
-.neighbor .name strong {
-    font-weight: var(--font-weight-bold);
+/* dot in the colour of the person's circle in the graph */
+.neighbor .name::before {
+    content: "";
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--sex-unknown);
 }
-
-.neighbor .name .rest {
+.neighbor .name.male::before {
+    background: var(--male);
+}
+.neighbor .name.female::before {
+    background: var(--female);
+}
+.neighbor-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 1rem 0 0.25rem;
+    padding: 0 0.5rem;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.neighbor-heading .count {
+    font-weight: 400;
+}
+.neighbor-heading .note {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+}
+.neighbor-heading .link-btn {
+    margin-left: auto;
+    text-transform: none;
+    letter-spacing: 0;
     font-weight: 400;
 }
 
@@ -1368,12 +1420,51 @@ select {
     padding: 0;
     background: var(--surface);
 }
-
-.person-graph {
+.person-graph-wrap {
+    position: relative;
     flex: 1;
     min-height: 0;
 }
-
+.person-graph {
+    position: absolute;
+    inset: 0;
+}
+/* name + alternate spellings over the label of a highlighted person (same type as the diagram labels) */
+.graph-tip {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1px 4px 3px;
+    border: 1px solid var(--muted);
+    border-radius: 4px;
+    background: var(--surface);
+    box-shadow: 0 1px 6px rgb(0 0 0 / 0.15);
+    font-family:
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        sans-serif;
+    line-height: 1.25;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+.graph-tip strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+.graph-tip span {
+    font-size: 11px;
+    color: var(--muted);
+}
+.graph-empty {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    flex: 1;
+}
 .graph-legend {
     margin: 0;
     padding: 0.5rem 1.25rem;
@@ -1381,7 +1472,7 @@ select {
 }
 
 @media (max-width: 899px) {
-    .person-graph {
+    .person-graph-wrap {
         height: 70vh;
         flex: none;
     }
@@ -1389,6 +1480,7 @@ select {
 
 .graph-toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.6rem;
     padding: 0.5rem 1.25rem;
@@ -1402,29 +1494,27 @@ select {
 .depth-switch button {
     padding: 0.2rem 0.65rem;
 }
-
-.hidden-row {
-    flex-wrap: wrap;
-}
-
-.chip {
+.graph-toolbar .toggle-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.1rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: var(--surface);
-    color: var(--text);
+    gap: 0.3rem;
+    margin-left: auto;
+    background: none;
     font: inherit;
     font-size: 0.85rem;
+    white-space: nowrap;
     cursor: pointer;
 }
 
-.chip:hover {
-    border-color: var(--accent);
+.graph-toolbar .toggle-btn + .toggle-btn {
+    margin-left: 0;
 }
 
+/* "3 persons hidden": information, not a switch */
+.graph-toolbar .toggle-btn.hidden-info {
+    border-color: var(--border);
+    color: var(--muted);
+}
 .link-btn {
     padding: 0;
     border: 0;
@@ -1432,4 +1522,87 @@ select {
     color: var(--accent);
     font: inherit;
     cursor: pointer;
+}
+
+/* person graph: legend of the link types followed (bottom right, toggles) */
+.relation-legend {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.1rem;
+    max-width: min(14rem, 60%);
+    max-height: calc(100% - 1rem);
+    overflow-y: auto;
+    padding: 0.4rem 0.5rem;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+}
+
+.legend-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.1rem 0.25rem;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.legend-entry:hover {
+    background: var(--action-bg);
+}
+
+.legend-entry .swatch {
+    flex: none;
+    width: 1.1rem;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+}
+
+.legend-entry.charters .swatch {
+    background: var(--muted);
+}
+
+.legend-entry.off {
+    color: var(--muted);
+    text-decoration: line-through;
+}
+
+.legend-entry.off .swatch {
+    background: var(--border);
+}
+
+.relation-legend .link-btn {
+    align-self: flex-end;
+    margin-top: 0.2rem;
+}
+
+.relation-legend .link-btn:disabled {
+    color: var(--muted);
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* person graph: sex filter (toolbar, radio group) */
+.graph-toolbar .sex-filter {
+    margin: 0 0 0 auto;
+}
+
+.graph-toolbar .hidden-info + .sex-filter {
+    margin-left: 0;
+}
+
+.sex-filter button {
+    padding: 0.3rem 0.55rem;
 }

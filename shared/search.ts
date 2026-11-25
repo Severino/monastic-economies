@@ -29,6 +29,12 @@ export function queryTerms(query: string): string[] {
     return [...new Set(fold(query.trim()).split(/\s+/).filter(Boolean))]
 }
 
+/** True when every (folded) term occurs somewhere in the text: the rule of the search box and the filters. */
+export function matchesAll(text: string, terms: string[]): boolean {
+    const f = fold(text)
+    return terms.every((t) => f.includes(t))
+}
+
 /** Number of non-overlapping occurrences of a folded term in a folded string. */
 function count(hay: string, term: string): number {
     let n = 0

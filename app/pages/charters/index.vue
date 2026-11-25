@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RotateCcw, Search } from "lucide-vue-next"
+import { RotateCcw } from "lucide-vue-next"
 import { queryTerms, searchDocs, snippet, type SearchDoc } from "#shared/search"
 
 useHead({ title: "Charters · Monastic Economies" })
@@ -94,15 +94,7 @@ const active = computed(() => ["q", "person", "place", "action"].some((k) => q(k
             </NuxtLink>
         </div>
         <form class="filters" role="search" @submit.prevent>
-            <label class="search-field">
-                <Search :size="18" class="search-icon" />
-                <input
-                    v-model="text"
-                    type="search"
-                    placeholder="Search text, persons, places…"
-                    aria-label="Full-text search"
-                />
-            </label>
+            <SearchField v-model="text" placeholder="Search text, persons, places…" label="Full-text search" />
             <div class="filter-row">
                 <FilterSelect
                     :model-value="q('person')"

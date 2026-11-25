@@ -15,7 +15,7 @@ export interface EgoNeighbor {
     relations: EgoRelation[]
 }
 
-interface RelationsFile {
+export interface RelationsFile {
     explicit: Relation[]
     cooccurrence: { source: Id; target: Id; charters: CharterId[] }[]
 }
@@ -68,17 +68,3 @@ export function useEgoNetwork(id: MaybeRefOrGetter<string>) {
 /** "sibling", "head of →", "← head of" */
 export const relationLabel = (r: EgoRelation) =>
     r.dir === "mutual" ? label(r.name) : r.dir === "out" ? `${label(r.name)} →` : `← ${label(r.name)}`
-
-/** "Hugo Comes Alsatiae" -> first "Hugo", rest "Comes Alsatiae" (the index has no separate name parts). */
-export function splitName(name: string) {
-    const i = name.trim().search(/\s/)
-    return i < 0
-        ? { first: name.trim(), rest: "" }
-        : {
-              first: name.trim().slice(0, i),
-              rest: name
-                  .trim()
-                  .slice(i + 1)
-                  .trim(),
-          }
-}
