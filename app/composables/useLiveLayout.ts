@@ -111,35 +111,23 @@ export function useLiveLayout<N extends LiveNode, L>(pinKey: () => string) {
 }
 
 /**
- * Pushes persons apart that have no line between them (d3-force custom force), so a person hanging on a
- * single relation is not drawn into a crowd it has nothing to do with. Only pairs nearer than
- * `distance` + their collision radii are pushed.
+ * Pushes every free person away from the centre person (at 0, 0) with the same force (d3-force custom force).
+ * Nothing pulls towards the centre: only the lines hold persons in, so a person sits as far out as its lines let it,
+ * and a person with a single relation hangs beyond its partner. Everyone is connected, so nobody drifts away.
  */
-export function forceApart<N extends LiveNode>(
-    applies: (a: string, b: string) => boolean,
-    distance: number,
-    strength: number,
-): Force<N, undefined> {
+export function forceOutward<N extends LiveNode>(push: number): Force<N, undefined> {
     let ns: N[] = []
     const force = (alpha: number) => {
-        for (let i = 0; i < ns.length; i++)
-            for (let j = i + 1; j < ns.length; j++) {
-                const a = ns[i]!
-                const b = ns[j]!
-                if (!applies(a.id, b.id)) continue
-                let dx = b.x - a.x
-                let dy = b.y - a.y
-                const d = Math.hypot(dx, dy) || 1e-3
-                const min = distance + a.radius + b.radius
-                if (d >= min) continue
-                const k = ((min - d) / d) * strength * alpha
-                dx *= k
-                dy *= k
-                b.vx = (b.vx ?? 0) + dx
-                b.vy = (b.vy ?? 0) + dy
-                a.vx = (a.vx ?? 0) - dx
-                a.vy = (a.vy ?? 0) - dy
+        for (const n of ns) {
+            const d = Math.hypot(n.x, n.y)
+            if (d < 1e-3) {
+                // a person exactly in the middle: push in some direction
+                n.vx = (n.vx ?? 0) + push * alpha
+                continue
             }
+            n.vx = (n.vx ?? 0) + (n.x / d) * push * alpha
+            n.vy = (n.vy ?? 0) + (n.y / d) * push * alpha
+        }
     }
     force.initialize = (nodes: N[]) => {
         ns = nodes

@@ -2,13 +2,19 @@
 import type { Person, PersonNetwork } from "#shared/types"
 import type { LiveNode } from "~/composables/useLiveLayout"
 
-// Network around one person, up to `depth` steps away. Positions come from a force simulation
-// (d3-force): each step is a ring, and within its ring a person sits nearer the centre the more
-// charters it shares with the person it was reached from. Line thickness = number of shared
-// charters; accent lines = explicit relations. Rendered client-only (WebGL); sigma, graphology
-// and d3-force are imported lazily so they stay out of SSR. Interaction: see usePersonSigma.
+// Network around one person, up to `depth` steps away; one component for both diagrams:
+// - "charters": a link is a shared charter or an explicit relation (the Charter Graph)
+// - "relations": explicit relations only (the Relations Graph)
+// Positions come from a live force simulation (d3-force): the person is fixed in the middle and everyone
+// else is pushed outwards; only the lines hold them. Lines to the person (and from step 2 on to the person
+// each one was reached from) are stiffer the more charters they share, so close persons stay near and
+// weak ties drift out; relation lines are stiff and as long as their label, so a person with a single
+// relation hangs beyond its partner instead of sitting near the centre. Line thickness = shared charters;
+// accent lines = explicit relations. Rendered client-only (WebGL); sigma, graphology and d3-force are
+// imported lazily so they stay out of SSR. Interaction: see usePersonSigma and useLiveLayout.
 const props = defineProps<{
     id: string
+    mode: "charters" | "relations"
     persons: Record<string, Person>
     depth: number
     /** person highlighted from outside (hover in the list) */
@@ -17,8 +23,8 @@ const props = defineProps<{
     selected?: string
     /** persons switched off: not shown and not followed to further steps */
     hidden: string[]
-    /** only follow explicit relations (persons that just share charters are left out) */
-    hideUnrelated: boolean
+    /** charters mode: only follow explicit relations (persons that just share charters are left out) */
+    hideUnrelated?: boolean
 }>()
 const emit = defineEmits<{
     /** click: select (undefined = clear) */
@@ -44,7 +50,11 @@ const view = usePersonSigma(container, {
     unpin: (id) => layout.unpin(id),
 })
 // live layout; dragged persons stay pinned (per centre person, remembered in localStorage)
-const layout = useLiveLayout<SimNode, SimLink>(() => `graph:${props.id}`)
+const layout = useLiveLayout<SimNode, SimLink>(
+    () => `${props.mode === "relations" ? "relations" : "graph"}:${props.id}`,
+)
+/** follow explicit relations only */
+const relationsOnly = computed(() => props.mode === "relations" || !!props.hideUnrelated)
 
 // ---- network (fetched once per visit) --------------------------------------------
 interface Link {
@@ -85,7 +95,7 @@ function explore(adj: Map<string, Map<string, Link>>) {
         for (const from of frontier)
             for (const [to, l] of adj.get(from) ?? []) {
                 if (off.has(to) || (step.has(to) && step.get(to)! < d)) continue
-                if (props.hideUnrelated && !l.relations.length) continue
+                if (relationsOnly.value && !l.relations.length) continue
                 const best = parent.get(to)
                 if (!step.has(to)) {
                     step.set(to, d)
@@ -136,10 +146,7 @@ function radialTree(step: Map<string, number>, parent: Map<string, string>, ring
     return pos
 }
 
-interface SimNode extends LiveNode {
-    /** target distance from the centre */
-    r: number
-}
+type SimNode = LiveNode
 interface SimLink {
     source: string | SimNode
     target: string | SimNode
@@ -168,37 +175,32 @@ async function render() {
 
     // Lines drawn: every link of the centre person, from step 2 on the link to the person each one was
     // reached from, and explicit relations between any two persons shown (so related persons form islands).
-    // Drawing every co-occurrence would be a hairball: every charter is a clique.
+    // Drawing every co-occurrence would be a hairball: every charter is a clique. Relations mode: relations only.
     const pairs = new Map<string, [string, string]>()
-    const addPair = (a: string, b: string) => pairs.set(a < b ? `${a} ${b}` : `${b} ${a}`, [a, b])
+    const related = (a: string, b: string) => !!adj.get(a)?.get(b)?.relations.length
+    const addPair = (a: string, b: string) => {
+        if (!relationsOnly.value || related(a, b)) pairs.set(a < b ? `${a} ${b}` : `${b} ${a}`, [a, b])
+    }
     for (const b of adj.get(props.id)?.keys() ?? []) if (step.has(b)) addPair(props.id, b)
     for (const [c, p] of parent) if (step.get(c)! > 1) addPair(p, c)
     for (const a of step.keys())
         for (const [b, l] of adj.get(a) ?? []) if (step.has(b) && l.relations.length && a < b) addPair(a, b)
     const relationText = (a: string, b: string) =>
         [...new Set((adj.get(a)?.get(b)?.relations ?? []).map((r) => r.name))].join(", ")
-    const related = (a: string, b: string) => !!adj.get(a)?.get(b)?.relations.length
 
-    // ring distance; a line with a relation label is at least as long as the label needs
+    // a line is at least as long as its relation label needs
     const sizeOf = (s: number) => (s === 0 ? 14 : Math.max(4, 10 - 2 * s))
     const minLength = (a: string, b: string) => {
         const t = relationText(a, b)
         return sizeOf(step.get(a)!) + sizeOf(step.get(b)!) + (t ? textWidth(t, "relation") + 30 : 40)
     }
-    const ring = 130
+    const ring = 110
 
-    // target distance from the centre: ring of its step, pulled inwards by the charters shared with the person
-    // it was reached from (the most shared charters in this graph: 40 % nearer), never shorter than its label
-    const shared = (c: string) => adj.get(parent.get(c)!)?.get(c)?.charters ?? 0
-    const max = Math.max(1, ...[...parent.keys()].map(shared))
-    const pull = (c: string) => (max > 1 ? Math.sqrt(Math.max(0, shared(c) - 1) / (max - 1)) : 0)
-    const target = (c: string, s: number) =>
-        s === 0 ? 0 : Math.max((s - 0.4 * pull(c)) * ring, s === 1 ? minLength(props.id, c) : 0)
-    // persons with explicit relations to others shown (not the centre) form islands: they sit further out,
-    // held only loosely by the radial force, so their relation lines can arrange them
-    const inIsland = new Set(
-        [...pairs.values()].filter(([a, b]) => a !== props.id && b !== props.id && relationText(a, b)).flat(),
-    )
+    // tie strength of a line by shared charters, 0 (one charter) … 1 (the most in this graph)
+    const charters = (a: string, b: string) => adj.get(a)?.get(b)?.charters ?? 0
+    const maxShared = Math.max(1, ...[...pairs.values()].map(([a, b]) => charters(a, b)))
+    const tie = (a: string, b: string) =>
+        maxShared > 1 ? Math.sqrt(Math.max(0, charters(a, b) - 1) / (maxShared - 1)) : 0
 
     if (lastCentre !== props.id) lastPos = new Map()
     lastCentre = props.id
@@ -210,41 +212,30 @@ async function render() {
             {
                 id: n,
                 ...(lastPos.get(n) ?? start.get(n)!),
-                r: inIsland.has(n) ? Math.max(target(n, s), (s + 0.6) * ring) : target(n, s),
                 radius: Math.max(sizeOf(s) + 8, textWidth(nameOf(n), "name") / 2 + 8),
             },
         ]),
     )
     simNodes.get(props.id)!.anchor = { x: 0, y: 0 }
     layout.applyPins(simNodes)
+    // Everyone is pushed outwards with the same force; a line holds its persons at about
+    // distance + push / strength. Relation lines are stiff (their persons stay together, as long as the
+    // label needs); charter lines are softer the fewer charters they stand for, so weak ties end up further out.
+    const PUSH = 12
     const links: SimLink[] = [...pairs.values()].map(([a, b]) => {
-        const related = !!relationText(a, b)
-        const fromCentre = a === props.id || b === props.id
+        const rel = related(a, b)
         return {
             source: a,
             target: b,
-            // lines from the centre follow the radial target; other relations pull their persons together
-            distance: fromCentre ? target(a === props.id ? b : a, 1) : minLength(a, b),
-            strength: related ? (fromCentre ? 0.3 : 1) : fromCentre ? 0.02 : 0.08,
+            distance: Math.max(rel ? minLength(a, b) : 0, ring * (0.7 - 0.3 * tie(a, b))),
+            strength: rel ? 0.8 : 0.04 + 0.3 * tie(a, b),
         }
     })
     const sim = d3
         .forceSimulation([...simNodes.values()])
-        .force(
-            "radial",
-            d3.forceRadial<SimNode>((n) => n.r).strength((n) => (inIsland.has(n.id) ? 0.04 : 0.3)),
-        )
+        .force("out", forceOutward<SimNode>(PUSH))
         .force("collide", d3.forceCollide<SimNode>((n) => n.radius).iterations(3))
-        .force("charge", d3.forceManyBody<SimNode>().strength(-120).distanceMax(300))
-        // persons in islands keep clear of everyone they have no relation with
-        .force(
-            "apart",
-            forceApart<SimNode>(
-                (a, b) => a !== props.id && b !== props.id && (inIsland.has(a) || inIsland.has(b)) && !related(a, b),
-                40,
-                0.5,
-            ),
-        )
+        .force("charge", d3.forceManyBody<SimNode>().strength(-80).distanceMax(250))
         .force(
             "link",
             d3
@@ -268,7 +259,7 @@ async function render() {
         (container.value.clientHeight - 100) / 2 / extent("y"),
     )
     if (f < 0.98) {
-        for (const l of links) if (l.strength === 1) l.distance /= f
+        for (const l of links) if (l.strength === 0.8) l.distance /= f
         sim.force<import("d3-force").ForceLink<SimNode, SimLink>>("link")!.links(links)
         sim.alpha(0.5)
         sim.tick(200)
@@ -322,7 +313,7 @@ watch(
     () => props.selected,
     (s) => view.setSelected(s),
 )
-watch(() => [props.id, props.depth, props.hidden.join(), props.hideUnrelated], render)
+watch(() => [props.id, props.mode, props.depth, props.hidden.join(), props.hideUnrelated], render)
 
 onMounted(render)
 onBeforeUnmount(() => renderId++)

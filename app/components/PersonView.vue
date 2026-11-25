@@ -19,7 +19,9 @@ type View = "charters" | "graph" | "relations"
 const view = computed<View>(() =>
     route.query.view === "graph" || route.query.view === "relations" ? route.query.view : "charters",
 )
-const setView = (v: View) => router.push({ query: { ...route.query, view: v === "charters" ? undefined : v } })
+// the steps differ per diagram, so switching starts with the diagram's default
+const setView = (v: View) =>
+    router.push({ query: { ...route.query, view: v === "charters" ? undefined : v, depth: undefined } })
 
 const { data: neighbors } = await useEgoNetwork(() => props.id)
 const nameOf = (id: string) => persons.value?.[id]?.name ?? id
@@ -42,10 +44,14 @@ watch(selected, async (id) => {
     document.querySelector(`[data-person="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" })
 })
 
-// steps from the centre person (URL: ?depth=2), 1–5
-const MAX_DEPTH = 5
-const depth = computed(() => Math.min(MAX_DEPTH, Math.max(1, Number(route.query.depth) || 1)))
-const setDepth = (d: number) => router.push({ query: { ...route.query, depth: d > 1 ? String(d) : undefined } })
+// steps from the centre person (URL: ?depth=2). Charter Graph: 1–5, default 1 (it grows fast). Relations Graph:
+// as many steps as the relations reach (one button each), default all.
+const relationSteps = computed(() => Math.max(0, ...(tree.value?.levels.map((l) => l.dist) ?? [])))
+const maxDepth = computed(() => (view.value === "relations" ? Math.max(1, relationSteps.value) : 5))
+const defaultDepth = computed(() => (view.value === "relations" ? maxDepth.value : 1))
+const depth = computed(() => Math.min(maxDepth.value, Math.max(1, Number(route.query.depth) || defaultDepth.value)))
+const setDepth = (d: number) =>
+    router.push({ query: { ...route.query, depth: d === defaultDepth.value ? undefined : String(d) } })
 // persons switched off in the graph (URL: ?hide=a,b), remembered per person in localStorage
 // (`monastic-economies:hidden:<id>`): a link without ?hide= restores them
 const hidden = computed(() =>
@@ -82,18 +88,21 @@ onMounted(() => {
     watch(() => [props.id, route.query.hide], syncHidden)
 })
 const hiddenCount = computed(() => hidden.value.filter((h) => h !== props.id).length)
-const showHiddenList = () =>
-    document.querySelector(".neighbor-heading.hidden-heading")?.scrollIntoView({ behavior: "smooth", block: "start" })
+
 // only explicit relations (URL: ?unrelated=hide): persons that just share charters are left out
 const hideUnrelated = computed(() => route.query.unrelated === "hide")
 const toggleUnrelated = () =>
     router.push({ query: { ...route.query, unrelated: hideUnrelated.value ? undefined : "hide" } })
 const graphQuery = computed(() => ({
     view: view.value === "charters" ? undefined : view.value,
-    depth: depth.value > 1 ? String(depth.value) : undefined,
+    depth: route.query.depth as string | undefined,
     unrelated: hideUnrelated.value ? "hide" : undefined,
 }))
 const openPerson = (id: string) => router.push({ path: `/persons/${id}`, query: graphQuery.value })
+/** hidden persons, by name */
+const hiddenRows = computed(() =>
+    hidden.value.filter((h) => h !== props.id).sort((a, b) => nameOf(a).localeCompare(nameOf(b))),
+)
 // list next to the graph: RELATED (explicit relation), UNRELATED (only shared charters), HIDDEN
 const byCharters = (a: EgoNeighbor, b: EgoNeighbor) =>
     b.charters.length - a.charters.length || nameOf(a.id).localeCompare(nameOf(b.id))
@@ -105,10 +114,7 @@ const sections = computed(() => {
         related: visible.filter((n) => n.relations.length).sort(byCharters),
         unrelated: visible.filter((n) => !n.relations.length).sort(byCharters),
         // hidden persons can be further away than one step, so they are not always neighbours
-        hidden: hidden.value
-            .filter((h) => h !== props.id)
-            .map((h) => byId.get(h) ?? { id: h, charters: [], relations: [] })
-            .sort((a, b) => nameOf(a.id).localeCompare(nameOf(b.id))),
+        hidden: hiddenRows.value.map((h) => byId.get(h) ?? { id: h, charters: [], relations: [] }),
     }
 })
 // list next to the relation tree: everyone in it, nearest first (fewest relations between them and this
@@ -116,27 +122,42 @@ const sections = computed(() => {
 const treeGroups = computed(() => {
     const t = tree.value
     if (!t) return []
-    const rows = t.levels
-        .filter((l) => l.id !== props.id)
-        .sort((a, b) => a.dist - b.dist || nameOf(a.id).localeCompare(nameOf(b.id)))
-        .map(({ id, dist }) => ({
-            id,
-            dist,
-            relations: t.links
-                .filter((l) => l.a === id || l.b === id)
-                .map((l) => {
-                    const other = nameOf(l.a === id ? l.b : l.a)
-                    const names = l.names.join(", ")
-                    return !l.directed || l.a === id ? `${names} of ${other}` : `has ${names} ${other}`
-                }),
-        }))
+    // steps again without the hidden persons (they cut the paths through them), up to the chosen depth
+    const off = new Set(hidden.value)
+    const dist = new Map([[props.id, 0]])
+    let frontier = [props.id]
+    for (let d = 1; frontier.length && d <= depth.value; d++) {
+        const next: string[] = []
+        for (const n of frontier)
+            for (const l of t.links) {
+                const other = l.a === n ? l.b : l.b === n ? l.a : undefined
+                if (!other || off.has(other) || dist.has(other)) continue
+                dist.set(other, d)
+                next.push(other)
+            }
+        frontier = next
+    }
+    const rows = [...dist]
+        .filter(([id]) => id !== props.id)
+        .sort(([a, da], [b, db]) => da - db || nameOf(a).localeCompare(nameOf(b)))
+        .map(([id, d]) => ({ id, dist: d, relations: relationsOf(id) }))
     const groups = new Map<number, typeof rows>()
     for (const r of rows) groups.set(r.dist, [...(groups.get(r.dist) ?? []), r])
-    return [...groups].map(([dist, items]) => ({
-        title: dist === 1 ? "Direct relations" : `${dist} steps`,
+    return [...groups].map(([d, items]) => ({
+        title: d === 1 ? "Direct relations" : `${d} steps`,
         items,
     }))
 })
+/** a person's relations in the tree, read from that person: "parent of Odo", "has parent Hugo" */
+function relationsOf(id: string) {
+    return (tree.value?.links ?? [])
+        .filter((l) => l.a === id || l.b === id)
+        .map((l) => {
+            const other = nameOf(l.a === id ? l.b : l.a)
+            const names = l.names.join(", ")
+            return !l.directed || l.a === id ? `${names} of ${other}` : `has ${names} ${other}`
+        })
+}
 const treeSize = computed(() => Math.max(0, (tree.value?.levels.length ?? 0) - 1))
 const stepCounts = ref<number[]>([])
 const shown = computed(() => stepCounts.value.reduce((a, b) => a + b, 0))
@@ -168,10 +189,10 @@ const sexIcon = (s?: string) => {
                     <List :size="16" /> Charters ({{ entries.length }})
                 </button>
                 <button type="button" :class="{ active: view === 'graph' }" @click="setView('graph')">
-                    <Share2 :size="16" /> Graph ({{ neighbors?.length ?? 0 }})
+                    <Share2 :size="16" /> Charter Graph ({{ neighbors?.length ?? 0 }})
                 </button>
                 <button type="button" :class="{ active: view === 'relations' }" @click="setView('relations')">
-                    <Network :size="16" /> Relations ({{ treeSize }})
+                    <Network :size="16" /> Relations Graph ({{ treeSize }})
                 </button>
             </div>
 
@@ -246,21 +267,40 @@ const sexIcon = (s?: string) => {
                 </template>
             </template>
             <template v-else-if="view === 'relations'">
-                <p v-if="!treeGroups.length" class="muted">No explicit relations to other persons.</p>
-                <template v-for="g in treeGroups" :key="g.title">
-                    <h2 class="neighbor-heading">
+                <p v-if="!treeSize" class="muted">No explicit relations to other persons.</p>
+                <template
+                    v-for="g in [
+                        ...treeGroups,
+                        { title: 'Hidden', items: hiddenRows.map((h) => ({ id: h, relations: relationsOf(h) })) },
+                    ]"
+                    :key="g.title"
+                >
+                    <h2 v-if="g.items.length" class="neighbor-heading">
                         {{ g.title }} <span class="count">{{ g.items.length }}</span>
+                        <button v-if="g.title === 'Hidden'" type="button" class="link-btn small" @click="setHidden([])">
+                            Show all
+                        </button>
                     </h2>
-                    <ul class="neighbor-list">
+                    <ul v-if="g.items.length" class="neighbor-list">
                         <li
                             v-for="r in g.items"
                             :key="r.id"
                             class="neighbor-row"
                             :data-person="r.id"
-                            :class="{ hovered: r.id === hovered, active: r.id === selected }"
+                            :class="{ hovered: r.id === hovered, active: r.id === selected, off: g.title === 'Hidden' }"
                             @mouseenter="hovered = r.id"
                             @mouseleave="hovered = undefined"
                         >
+                            <button
+                                type="button"
+                                class="eye"
+                                :title="g.title === 'Hidden' ? 'Show in graph' : 'Hide in graph'"
+                                :aria-pressed="g.title !== 'Hidden'"
+                                @click="toggleHidden(r.id)"
+                            >
+                                <EyeOff v-if="g.title === 'Hidden'" :size="16" />
+                                <Eye v-else :size="16" />
+                            </button>
                             <NuxtLink :to="{ path: `/persons/${r.id}`, query: graphQuery }" class="neighbor">
                                 <span class="name" :class="sexOf(persons?.[r.id]?.sex)" :title="altOf(r.id)">{{
                                     nameOf(r.id)
@@ -291,12 +331,12 @@ const sexIcon = (s?: string) => {
                 <NuxtLink :to="{ path: '/charters', query: { person: id } }">Show in catalog →</NuxtLink>
             </template>
         </section>
-        <section v-if="view === 'graph'" class="pane graph-pane">
+        <section v-if="view !== 'charters'" class="pane graph-pane">
             <div class="graph-toolbar">
                 <span class="muted small">Steps</span>
                 <div class="view-switch depth-switch" role="group" aria-label="Steps from this person">
                     <button
-                        v-for="d in MAX_DEPTH"
+                        v-for="d in maxDepth"
                         :key="d"
                         type="button"
                         :class="{ active: d === depth }"
@@ -311,12 +351,13 @@ const sexIcon = (s?: string) => {
                     v-if="hiddenCount"
                     type="button"
                     class="toggle-btn hidden-info"
-                    title="Hidden with Alt-click or the eye in the list; show them in the list"
-                    @click="showHiddenList"
+                    title="Show all hidden persons again"
+                    @click="setHidden([])"
                 >
                     <EyeOff :size="16" /> {{ hiddenCount }} person{{ hiddenCount === 1 ? "" : "s" }} hidden
                 </button>
                 <button
+                    v-if="view === 'graph'"
                     type="button"
                     class="toggle-btn"
                     :class="{ off: !hideUnrelated }"
@@ -327,9 +368,13 @@ const sexIcon = (s?: string) => {
                     <Link2Off :size="16" /> Hide unrelated
                 </button>
             </div>
-            <ClientOnly>
+            <p v-if="view === 'relations' && !treeSize" class="muted graph-empty">
+                {{ person.name }} has no explicit relations in the index.
+            </p>
+            <ClientOnly v-else>
                 <PersonGraph
                     :id="id"
+                    :mode="view === 'relations' ? 'relations' : 'charters'"
                     :persons="persons ?? {}"
                     :depth="depth"
                     :highlight="hovered"
@@ -343,38 +388,19 @@ const sexIcon = (s?: string) => {
                     @stats="stepCounts = $event"
                 />
             </ClientOnly>
-            <p class="graph-legend muted small">
-                Drag a person to pin them where you drop them (double-click releases), click to select, Ctrl/⌘-click to
-                open, Alt-click to hide (with everyone reached only through them). Rings: steps from {{ person.name }};
-                the more charters a person shares, the nearer it sits. Lines: links of {{ person.name }}, and from step
-                2 on the link each person was reached through. Thickness: shared charters.
-                <span class="accent">Coloured lines</span>: explicit relations from the index, arrow = direction.
+            <p v-if="view === 'graph'" class="graph-legend muted small">
+                {{ person.name }} stays in the middle; everyone else is pushed outwards and held by their lines: the
+                more charters a line stands for, the tighter it holds. Lines: links of {{ person.name }}, from step 2 on
+                the link each person was reached through, and relations among the persons shown. Thickness: shared
+                charters. <span class="accent">Coloured lines</span>: explicit relations from the index, arrow =
+                direction. Drag a person to pin them (double-click releases), click to select, Ctrl/⌘-click to open,
+                Alt-click to hide (with everyone reached only through them).
             </p>
-        </section>
-        <section v-else-if="view === 'relations'" class="pane graph-pane">
-            <div class="graph-toolbar">
-                <span class="muted small"
-                    >{{ treeSize }} related person{{ treeSize === 1 ? "" : "s" }}, explicit relations only</span
-                >
-            </div>
-            <p v-if="!treeSize" class="muted graph-empty">{{ person.name }} has no explicit relations in the index.</p>
-            <ClientOnly v-else>
-                <RelationTree
-                    :id="id"
-                    :persons="persons ?? {}"
-                    :tree="tree!"
-                    :highlight="hovered"
-                    :selected="selected"
-                    @hover="hovered = $event"
-                    @select="selected = $event"
-                    @open="openPerson"
-                />
-            </ClientOnly>
-            <p class="graph-legend muted small">
-                All persons connected to {{ person.name }} through relations from the index, followed recursively;
-                shared charters are ignored. Arrows point from the active to the passive side of a relation (e.g. lord →
-                vassal), which also stands one row lower; mutual relations side by side. Drag a person to pin them
-                (double-click releases), click to select, Ctrl/⌘-click to open.
+            <p v-else class="graph-legend muted small">
+                Persons connected to {{ person.name }} through relations from the index, followed recursively; shared
+                charters are ignored. Arrows point from the active to the passive side of a relation (e.g. lord →
+                vassal). Drag a person to pin them (double-click releases), click to select, Ctrl/⌘-click to open,
+                Alt-click to hide.
             </p>
         </section>
         <section v-else class="pane preview">
