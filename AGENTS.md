@@ -124,6 +124,13 @@ UI language: **English**.
     is related to the centre, else the rope of the member nearest the centre with the most relations. The other
     members' charter lines are drawn but pull nothing, so e.g. a person's dependants form a ring on the far side of
     that person, away from everyone else, also when the person is dragged further out.
+  - **Fans**: who hangs on whom is found breadth-first from the centre along springs and ropes; a person hanging
+    on someone other than the centre is drawn to the point straight beyond that person, seen from the centre
+    (`forceFan`), and its siblings push each other apart, so relatives fan out on the far side. The outward push
+    alone cannot do that: it is the same for a person and its relatives, so a group that flew out left its relatives
+    hanging on the inner side.
+  - The simulation runs 500 ticks before showing, so it has settled (otherwise dragging reheated it and everything
+    visibly contracted to the true balance).
 - The simulation stays live (`useLiveLayout`): a dragged person stays **pinned** where it is dropped (ring around the
   circle), a double click releases it; pins are stored per diagram and person in `localStorage`
   (`monastic-economies:pins:graph:<id>`, `…:relations:<id>`). A changed graph (steps, hiding) starts from the

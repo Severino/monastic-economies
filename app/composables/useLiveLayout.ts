@@ -166,3 +166,29 @@ export function forceRope<N extends LiveNode>(ropes: Rope<N>[]): Force<N, undefi
     force.initialize = () => {}
     return force
 }
+
+/** A person hanging on another person (its hub), seen from the centre person at (0, 0). */
+export interface Fan<N extends LiveNode> {
+    node: N
+    hub: N
+    distance: number
+}
+
+/**
+ * Draws each person towards the point `distance` straight beyond its hub, seen from the centre person (d3-force
+ * custom force), so relatives fan out on the far side of the person they hang on, never on the inner side.
+ */
+export function forceFan<N extends LiveNode>(fans: Fan<N>[], strength: number): Force<N, undefined> {
+    const force = (alpha: number) => {
+        for (const { node, hub, distance } of fans) {
+            const r = Math.hypot(hub.x, hub.y)
+            if (r < 1e-3) continue
+            const tx = hub.x + (hub.x / r) * distance
+            const ty = hub.y + (hub.y / r) * distance
+            node.vx = (node.vx ?? 0) + (tx - node.x) * strength * alpha
+            node.vy = (node.vy ?? 0) + (ty - node.y) * strength * alpha
+        }
+    }
+    force.initialize = () => {}
+    return force
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Person, PersonNetwork } from "#shared/types"
-import type { LiveNode, Rope } from "~/composables/useLiveLayout"
+import type { Fan, LiveNode, Rope } from "~/composables/useLiveLayout"
 
 // Network around one person, up to `depth` steps away; one component for both diagrams:
 // - "charters": a link is a shared charter or an explicit relation (the Charter Graph)
@@ -272,9 +272,38 @@ async function render() {
             length: ring * (0.8 + 0.8 * (1 - tie(a, b))),
         })
     }
+    // Who hangs on whom: breadth-first from the centre person along springs (both ways) and ropes (towards the
+    // person held). A person hanging on someone other than the centre is drawn to the point straight beyond that
+    // person, seen from the centre (forceFan); its siblings push each other apart, so they fan out on the far side.
+    // (The outward push alone is the same for a person and its relatives, so it never turns a group around:
+    // a person that flew out past its relatives left them hanging on the inner side.)
+    const along = new Map<string, { to: string; distance: number }[]>()
+    const addAlong = (a: string, b: string, distance: number) =>
+        along.set(a, [...(along.get(a) ?? []), { to: b, distance }])
+    for (const l of springs) {
+        addAlong(l.source as string, l.target as string, l.distance)
+        addAlong(l.target as string, l.source as string, l.distance)
+    }
+    for (const r of ropes) addAlong(r.a.id, r.b.id, r.length * 0.8)
+    const fans: Fan<SimNode>[] = []
+    const reached = new Set([props.id])
+    let queue = [props.id]
+    while (queue.length) {
+        const next: string[] = []
+        for (const n of queue)
+            for (const { to, distance } of along.get(n) ?? []) {
+                if (reached.has(to)) continue
+                reached.add(to)
+                next.push(to)
+                if (n !== props.id) fans.push({ node: simNodes.get(to)!, hub: simNodes.get(n)!, distance })
+            }
+        queue = next.sort()
+    }
+
     const sim = d3
         .forceSimulation([...simNodes.values()])
         .force("out", forceOutward<SimNode>(PUSH))
+        .force("fan", forceFan<SimNode>(fans, 0.15))
         .force("collide", d3.forceCollide<SimNode>((n) => n.radius).iterations(3))
         .force("charge", d3.forceManyBody<SimNode>().strength(-80))
         .force(
@@ -291,7 +320,8 @@ async function render() {
     // settle before showing (persons already shown barely move), then keep the simulation for dragging
     const changed = [...step.keys()].some((n) => !lastPos.has(n))
     sim.alpha(changed ? 1 : 0.3)
-    sim.tick(300)
+    sim.alphaDecay(1 - Math.pow(0.001, 1 / 500))
+    sim.tick(500)
     const extent = (axis: "x" | "y") => Math.max(...[...simNodes.values()].map((p) => Math.abs(p[axis]))) + 40
 
     const graph = new Graph()
