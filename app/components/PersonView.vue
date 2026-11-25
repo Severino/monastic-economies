@@ -389,9 +389,10 @@ const sexIcon = (s?: string) => {
                 />
             </ClientOnly>
             <p v-if="view === 'graph'" class="graph-legend muted small">
-                {{ person.name }} stays in the middle; everyone else is pushed outwards and held by their lines: the
-                more charters a line stands for, the tighter it holds. Lines: links of {{ person.name }}, from step 2 on
-                the link each person was reached through, and relations among the persons shown. Thickness: shared
+                {{ person.name }} stays in the middle and pushes everyone away; persons also push each other away and
+                only lines hold them: the more charters a line stands for, the shorter it may get; relation lines keep
+                related persons together, beyond the person they hang on. Lines: links of {{ person.name }}, from step 2
+                on the link each person was reached through, and relations among the persons shown. Thickness: shared
                 charters. <span class="accent">Coloured lines</span>: explicit relations from the index, arrow =
                 direction. Drag a person to pin them (double-click releases), click to select, Ctrl/⌘-click to open,
                 Alt-click to hide (with everyone reached only through them).
