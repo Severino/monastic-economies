@@ -247,6 +247,12 @@ h2 {
     }
 }
 
+.interactive {
+    user-select: none;
+    cursor: pointer;
+    pointer-events: all;
+}
+
 .facsimile {
     padding: 0;
     overflow: hidden;

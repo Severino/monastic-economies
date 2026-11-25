@@ -235,5 +235,10 @@ onBeforeUnmount(() => map?.remove())
 </script>
 
 <template>
-    <div ref="container" class="places-map" role="region" aria-label="Map of places" />
+    <div
+        ref="container"
+        class="places-map"
+        role="region"
+        aria-label="Map of places"
+    />
 </template>

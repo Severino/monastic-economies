@@ -1,3 +1,81 @@
+<template>
+    <div class="map-page">
+        <ClientOnly>
+            <PlacesMap
+                :selected="selected"
+                :show-empty="showEmpty"
+                @select="select"
+            />
+            <template #fallback>
+                <div class="places-map" />
+            </template>
+        </ClientOnly>
+        <aside
+            v-if="place"
+            class="map-panel"
+        >
+            <button
+                type="button"
+                class="icon-btn map-panel-close"
+                aria-label="Close"
+                @click="select()"
+            >
+                <X
+                    :size="18"
+                    aria-hidden="true"
+                />
+            </button>
+            <p class="eyebrow">
+                Place<template v-if="place.types.length"> · {{ place.types.join(", ") }}</template>
+            </p>
+            <h1>
+                <NuxtLink :to="`/places/${place.id}`">{{ placeName(place) }}</NuxtLink>
+            </h1>
+            <h2>Charters ({{ entries.length }})</h2>
+            <CharterList
+                :entries="entries"
+                :roles="roles"
+            />
+        </aside>
+        <div
+            class="map-controls small"
+            :class="{ 'has-panel': place }"
+        >
+            <div class="map-legend">
+                <label class="muted">Charters</label>
+                <span
+                    class="map-scale"
+                    aria-hidden="true"
+                />
+                <span class="map-scale-labels muted"><span
+                        v-for="l in LEGEND"
+                        :key="l.label"
+                    >{{ l.label }}</span></span>
+            </div>
+            <label class="map-toggle interactive">
+                <label>
+                    <input
+                        v-model="showEmpty"
+                        type="checkbox"
+                        style="display: none;"
+                    />
+                    <div class="map-dot">
+                    </div>
+                </label>
+
+
+                Places without charters ({{ withoutCharters }})
+            </label>
+            <p
+                v-if="withoutCoords"
+                class="muted"
+            >
+                {{ withoutCoords }} {{ withoutCoords === 1 ? "place has" : "places have" }} no coordinates.
+            </p>
+        </div>
+    </div>
+</template>
+
 <script setup lang="ts">
 import { X } from "lucide-vue-next"
 
@@ -46,55 +124,19 @@ const LEGEND = [
 ]
 </script>
 
-<template>
-    <div class="map-page">
-        <ClientOnly>
-            <PlacesMap :selected="selected" :show-empty="showEmpty" @select="select" />
-            <template #fallback><div class="places-map" /></template>
-        </ClientOnly>
-        <aside v-if="place" class="map-panel">
-            <button type="button" class="icon-btn map-panel-close" aria-label="Close" @click="select()">
-                <X :size="18" aria-hidden="true" />
-            </button>
-            <p class="eyebrow">
-                Place<template v-if="place.types.length"> · {{ place.types.join(", ") }}</template>
-            </p>
-            <h1>
-                <NuxtLink :to="`/places/${place.id}`">{{ placeName(place) }}</NuxtLink>
-            </h1>
-            <h2>Charters ({{ entries.length }})</h2>
-            <CharterList :entries="entries" :roles="roles" />
-        </aside>
-        <div class="map-controls small" :class="{ 'has-panel': place }">
-            <div class="map-legend">
-                <span class="muted">Charters</span>
-                <span class="map-scale" aria-hidden="true" />
-                <span class="map-scale-labels muted"
-                    ><span v-for="l in LEGEND" :key="l.label">{{ l.label }}</span></span
-                >
-            </div>
-            <label class="map-toggle">
-                <input v-model="showEmpty" type="checkbox" />
-                <span class="map-dot" aria-hidden="true" />
-                Places without charters ({{ withoutCharters }})
-            </label>
-            <p v-if="withoutCoords" class="muted">
-                {{ withoutCoords }} {{ withoutCoords === 1 ? "place has" : "places have" }} no coordinates.
-            </p>
-        </div>
-    </div>
-</template>
 
 <style>
 .map-page {
     position: relative;
     height: calc(100dvh - var(--header-h));
 }
+
 .places-map {
     position: absolute;
     inset: 0;
     background: var(--bg);
 }
+
 .map-panel {
     position: absolute;
     top: 0.75rem;
@@ -108,25 +150,31 @@ const LEGEND = [
     border-radius: 6px;
     box-shadow: 0 4px 18px rgb(0 0 0 / 0.15);
 }
+
 .map-panel h1 {
     font-size: 1.5rem;
     padding-right: 2rem;
 }
+
 .map-panel h1 a {
     color: inherit;
     text-decoration: none;
 }
+
 .map-panel h1 a:hover {
     color: var(--accent);
 }
+
 .map-panel h2 {
     margin-top: 1.25rem;
 }
+
 .map-panel-close {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
 }
+
 .map-controls {
     position: absolute;
     right: 0.75rem;
@@ -140,46 +188,64 @@ const LEGEND = [
     border-radius: 6px;
     box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
 }
+
 .map-controls p {
     margin: 0;
 }
+
 .map-legend {
     display: grid;
     grid-template-columns: auto 7rem;
     column-gap: 0.6rem;
     align-items: center;
 }
+
 .map-scale {
     height: 0.6rem;
     border-radius: 3px;
     background: linear-gradient(to right, var(--map-1), var(--map-3), var(--map-5));
 }
+
 .map-scale-labels {
     grid-column: 2;
     display: flex;
     justify-content: space-between;
     font-size: 0.85em;
 }
+
 .map-toggle {
     display: flex;
     align-items: center;
     gap: 0.4rem;
     cursor: pointer;
 }
+
 .map-toggle input {
     margin: 0;
     accent-color: var(--accent);
 }
+
+input:checked + .map-dot {
+    border-style: solid;
+    background: var(--map-0);
+}
+
 .map-dot {
     width: 0.65rem;
     height: 0.65rem;
     border-radius: 50%;
-    background: var(--map-0);
+    border-width: 1px;
+
+    
+    border-style: dotted;
+    background: transparent;
 }
+
 @media (max-width: 40rem) {
     .map-controls.has-panel {
         display: none;
     }
+
     .map-panel {
         top: 45%;
         right: 0.75rem;
@@ -187,13 +253,16 @@ const LEGEND = [
         width: auto;
     }
 }
+
 /* MapLibre controls in the dark theme */
 :root[data-theme="dark"] .maplibregl-ctrl-group,
 :root[data-theme="dark"] .maplibregl-ctrl-attrib,
 :root[data-theme="dark"] .maplibregl-ctrl-scale {
     filter: invert(0.9) hue-rotate(180deg);
 }
+
 @media (prefers-color-scheme: dark) {
+
     :root:not([data-theme="light"]) .maplibregl-ctrl-group,
     :root:not([data-theme="light"]) .maplibregl-ctrl-attrib,
     :root:not([data-theme="light"]) .maplibregl-ctrl-scale {

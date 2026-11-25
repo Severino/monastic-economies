@@ -19,6 +19,12 @@ UI language: **English**.
 - During prerendering, data is read through `server/api/data/[...path]` (Nitro server assets);
   in the browser, pages use the prerendered payloads. Only the search data (`search.json`) and the person network for the graph (`network.json`) are fetched from `/data/`.
 
+## Coding Style
+
+### Vue
+- Use a line-break that is compatible with: "html.format.wrapAttributes": "force-expand-multiline"
+- always retain order of blocks: <template /><script /><style />
+
 ## Data
 
 - `data/` = real working data, **git-ignored, never commit it**.
